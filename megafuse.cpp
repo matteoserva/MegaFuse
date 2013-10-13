@@ -156,6 +156,7 @@ file_stat MegaFuse::getAttr(std::string path)
                 fs.nlink = 1;
                 fs.size = n->size;
                 fs.dir = false;
+                fs.mtime = n->mtime;
                 break;
 
 			case FOLDERNODE:
@@ -164,6 +165,7 @@ file_stat MegaFuse::getAttr(std::string path)
                 fs.nlink = 1;
                 fs.size = 0;
                 fs.dir = true;
+                fs.mtime = n->mtime;
 				break;
     }
     engine_mutex.unlock();

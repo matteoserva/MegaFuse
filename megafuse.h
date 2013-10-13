@@ -8,6 +8,7 @@ struct file_stat
     int nlink;
     int error;
     bool dir;
+    time_t mtime;
     file_stat() : error(0){};
 };
 

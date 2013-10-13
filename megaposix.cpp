@@ -243,8 +243,8 @@ void CurlHttpIO::waitio(dstime maxds)
 	select(maxfd+1,&rfds,&wfds,&efds,maxds+1 ? &tv : NULL);
 
 	// user interaction from stdin?
-	if (FD_ISSET(fileno(stdin),&rfds)) rl_callback_read_char();
-	else redisplay = 1;
+	//if (FD_ISSET(fileno(stdin),&rfds)) rl_callback_read_char();
+	//else redisplay = 1;
 }
 
 // callback for incoming HTTP payload

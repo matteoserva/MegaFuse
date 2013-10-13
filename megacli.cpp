@@ -830,13 +830,13 @@ static const char* get_prompt(void)
 
 static void setprompt(prompttype p)
 {
-	if (prompt != COMMAND) cout << endl;
+	/*if (prompt != COMMAND) cout << endl;
 
 	prompt = p;
 
 	term_echo(p == COMMAND);
 
-	rl_callback_handler_install(get_prompt(),process_line);
+	rl_callback_handler_install(get_prompt(),process_line);*/
 }
 
 TreeProcCopy::TreeProcCopy()
@@ -914,7 +914,7 @@ static byte newpwkey[SymmCipher::KEYLENGTH];
 
 void process_line(char* line)
 {
-	switch (prompt)
+	/*switch (prompt)
 	{
 		case LOGINPASSWORD:
 			client->pw_key(line,pwkey);
@@ -2036,7 +2036,7 @@ void process_line(char* line)
 
 			cout << "?Invalid command" << endl;
 	}
-}
+*/}
 
 // callback for non-EAGAIN request-level errors
 // in most cases, retrying is futile, so the application exits

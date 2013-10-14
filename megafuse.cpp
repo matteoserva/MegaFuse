@@ -4,79 +4,9 @@
 #include "megaclient.h"
 #include "megafuse.h"
 
-void MegaFuseCallback::putnodes_result(error e, targettype, NewNode* nn)
-{
-    delete[] nn;
-
-
-
-    last_error = e;
-    putnodes_lock.unlock();
-}
-
-void MegaFuseCallback::transfer_failed(int td,  error e)
-{
-    printf("upload fallito\n");
-    last_error = e;
-    upload_lock.unlock();
-}
-void MegaFuseCallback::transfer_complete(int td, handle uploadhandle, const byte* uploadtoken, const byte* filekey, SymmCipher* key)
-{
-    DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
-    printf("upload riuscito");
-    client->tclose(td);
-    upload_lock.unlock();
-}
-
-
-void MegaFuseCallback::topen_result(int td, error e)
-{
-
-	printf("topen fallito\n");
-    last_error = e;
-	client->tclose(td);
-	//open_lock.unlock();
-}
-
-void MegaFuseCallback::unlink_result(handle h, error e)
-{
-
-	printf("unlink eseguito\n");
-    last_error = e;
-	unlink_lock.unlock();
-}
-// topen() succeeded (download only)
-void MegaFuseCallback::topen_result(int td, string* filename, const char* fa, int pfa)
-{
-    last_error = API_OK;
-    result = td;
-	printf("topen riuscito\n");
-	open_lock.unlock();
-}
-
-void MegaFuseCallback::transfer_failed(int td, string& filename, error e)
-{
-    printf("download fallito\n");
-    DemoApp::transfer_failed(td,filename,e);
-    last_error=e;
-    download_lock.unlock();
-}
-void MegaFuseCallback::transfer_complete(int td, chunkmac_map* macs, const char* fn)
-{
-    printf("download riuscito\n");
-    client->tclose(td);
-    last_error=API_OK;
-    download_lock.unlock();
-}
-
-
-void MegaFuseCallback::login_result(error e)
-{
-    DemoApp::login_result(e);
-	last_error = e;
-	login_lock.unlock();
-}
-
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 void MegaFuse::event_loop(MegaFuse* that)
 {
@@ -86,9 +16,9 @@ void MegaFuse::event_loop(MegaFuse* that)
 	for (;;)
 	{
 	    that->engine_mutex.lock();
-		client->exec();
+		that->client->exec();
 		that->engine_mutex.unlock();
-		client->wait();
+		that->client->wait();
 	}
 }
 
@@ -100,14 +30,19 @@ bool MegaFuse::start()
 bool MegaFuse::login(std::string username, std::string password)
 {
     std::lock_guard<std::mutex>lock(api_mutex);
-    megaFuseCallback.login_lock.lock();
-    engine_mutex.lock();
-    client->pw_key(password.c_str(),pwkey);
-    client->login(username.c_str(),pwkey);
-    engine_mutex.unlock();
-    megaFuseCallback.login_lock.lock();
-    megaFuseCallback.login_lock.unlock();
-    if(megaFuseCallback.last_error)
+    {
+
+        engine_mutex.lock();
+        client->pw_key(password.c_str(),pwkey);
+        client->login(username.c_str(),pwkey);
+        login_ret=0;
+        engine_mutex.unlock();
+        printf("login: aspetto il risultato\n");
+        std::unique_lock<std::mutex> lk(cvm);
+        cv.wait(lk, [this]{return login_ret;});
+    }
+
+    if(login_ret < 0)
         return false;
     else
         return true;
@@ -115,7 +50,7 @@ bool MegaFuse::login(std::string username, std::string password)
 
 std::vector<std::string> MegaFuse::ls(std::string path)
 {
-    std::cout << path <<std::endl;
+    /*std::cout << path <<std::endl;
        engine_mutex.lock();
 
     Node* n = nodeByPath(path);
@@ -132,12 +67,12 @@ std::vector<std::string> MegaFuse::ls(std::string path)
             l.push_back( (*it)->displayname());
 		}
    engine_mutex.unlock();
-    return l;
+    return l;*/
 }
 
 file_stat MegaFuse::getAttr(std::string path)
 {
-    std::lock_guard<std::mutex>lock(api_mutex);
+  /*  std::lock_guard<std::mutex>lock(api_mutex);
     engine_mutex.lock();
     std::cout <<"PATH: "<<path<<std::endl;
     Node *n = nodeByPath(path);
@@ -169,18 +104,18 @@ file_stat MegaFuse::getAttr(std::string path)
 				break;
     }
     engine_mutex.unlock();
-		return fs;
+		return fs;*/
 
 }
 
 std::pair<std::string,std::string> MegaFuse::splitPath(std::string path)
 {
-    size_t pos = path.find_last_of('/');
-    std::string base = path.substr(0,pos+1);
-    std::string name = path.substr(pos+1);
-    printf("base: %s, name: %s\n",base.c_str(),name.c_str());
-
-    return std::pair<std::string,std::string>(base,name);
+    int pos = path.find_last_of('/');
+    std::string basename = path.substr(0,pos);
+    std::string filename = path.substr(pos+1);
+    if(basename == "")
+       basename = "/";
+    return std::pair<std::string,std::string> (basename,filename);
 }
 
 //warning, no mutex
@@ -196,6 +131,7 @@ Node* MegaFuse::nodeByPath(std::string path)
     if(path[0] == '/')
         path = path.substr(1);
     Node *n = client->nodebyhandle(client->rootnodes[0]);
+
     int pos;
     while ((pos = path.find_first_of('/')) > 0)
     {
@@ -233,7 +169,7 @@ Node* MegaFuse::childNodeByName(Node *p,std::string name)
 
 bool MegaFuse::upload(std::string filename,std::string dst)
 {
-    std::lock_guard<std::mutex>lock(api_mutex);
+   /* std::lock_guard<std::mutex>lock(api_mutex);
     engine_mutex.lock();
 
 
@@ -254,16 +190,68 @@ bool MegaFuse::upload(std::string filename,std::string dst)
     megaFuseCallback.upload_lock.lock();
     engine_mutex.unlock();
     megaFuseCallback.upload_lock.lock();
-    megaFuseCallback.upload_lock.unlock();
+    megaFuseCallback.upload_lock.unlock();*/
     return true;
 
 
 }
 
+int MegaFuse::open(const char *p, struct fuse_file_info *fi)
+{
+    std::lock_guard<std::mutex>lock(api_mutex);
+    std::string path(p);
+    //auto path = splitPath(std::string(p));
+    {
+        std::lock_guard<std::mutex>lock(engine_mutex);
+        Node *n = nodeByPath(p);
+        if(!n)
+            return -ENOENT;
+
+
+        if(file_cache.find(path) != file_cache.end())
+           {
+                printf("not implemented, open from cache\n");
+                exit(1);
+           }
+
+            int td = client->topen(n->nodehandle, NULL, 0,-1, 1);
+             if(td < 0)
+                return -EIO;
+
+            file_cache[path].td = td;
+            file_cache[path].last_modified = n->mtime;   //client->getq.push_back(new AppFileGet(n->nodehandle));
+
+    }
+
+    {
+
+        opend_ret=0;
+        printf("opend: aspetto il risultato\n");
+        std::unique_lock<std::mutex> lk(cvm);
+        cv.wait(lk, [this]{return opend_ret;});
+    }
+/*
+    if(opend_ret < 0)
+        return -EIO;
+
+    printf("ora ")*/
+    {
+        auto it = file_cache.find(std::string(p));
+        std::lock_guard<std::mutex>lock(engine_mutex);
+
+        it->second.n_clients++;
+    }
+
+    if(opend_ret < 0)
+        return -EIO;
+
+    return 0;
+}
+
 bool MegaFuse::download(std::string filename,std::string dst)
 {
 
-    std::lock_guard<std::mutex>lock(api_mutex);
+   /* std::lock_guard<std::mutex>lock(api_mutex);
 
     engine_mutex.lock();
         Node *n = nodeByPath(filename.c_str());
@@ -287,7 +275,7 @@ bool MegaFuse::download(std::string filename,std::string dst)
     delete client->gettransfer((transfer_list*)&client->getq,megaFuseCallback.result);
     if(megaFuseCallback.last_error)
         return false;
-
+*/
     return true;
 
 
@@ -295,7 +283,7 @@ bool MegaFuse::download(std::string filename,std::string dst)
 
 int MegaFuse::mkdir(std::string dst)
 {
-    std::lock_guard<std::mutex>lock(api_mutex);
+ /*   std::lock_guard<std::mutex>lock(api_mutex);
     engine_mutex.lock();
 
                                     int pos = dst.find_last_of('/');
@@ -337,12 +325,12 @@ int MegaFuse::mkdir(std::string dst)
     megaFuseCallback.putnodes_lock.lock();
     megaFuseCallback.putnodes_lock.unlock();
     if(megaFuseCallback.last_error)
-        return -1;
+        return -1;*/
     return 0;
 }
 int MegaFuse::unlink(std::string filename)
 {
-    std::lock_guard<std::mutex>lock(api_mutex);
+   /* std::lock_guard<std::mutex>lock(api_mutex);
 
     engine_mutex.lock();
     Node *n = nodeByPath(filename.c_str());
@@ -364,14 +352,14 @@ int MegaFuse::unlink(std::string filename)
     megaFuseCallback.unlink_lock.lock();
     megaFuseCallback.unlink_lock.unlock();
     if(megaFuseCallback.last_error)
-        return -EIO;
+        return -EIO;*/
     return 0;
 
 }
 
 int MegaFuse::open(std::string filename)
 {
-    engine_mutex.lock();
+  /*  engine_mutex.lock();
     Node *n = nodeByPath(filename.c_str());
 
     //megaFuseCallback.open_lock.lock();
@@ -388,6 +376,6 @@ int MegaFuse::open(std::string filename)
 
     //megaFuseCallback.open_lock.unlock();
     return res;
-    return megaFuseCallback.result;
+    return megaFuseCallback.result;*/
 
 }

@@ -411,9 +411,18 @@ int main(int argc, char **argv)
 	// instantiate app components: the callback processor (DemoApp),
 	// the cURL HTTP I/O engine (CurlHttpIO) and the MegaClient itself
 	MegaFuse megaFuse;
-	client = new MegaClient(&megaFuse.megaFuseCallback,new CurlHttpIO,new BdbAccess,APPKEY);
+	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,APPKEY);
 	megacli();
 	megaFuse.start();
-	megaFuse.login(USERNAME,PASSWORD);
+	if(!megaFuse.login(USERNAME,PASSWORD))
+    {
+        printf("login failed. exiting...\n");
+        exit(1);
+    }
+    printf("login successful\n");
+    megaFuse.open("/megaclient",nullptr);
+
+	while(true)
+        usleep(500000);
 	megafuse_mainpp(argc,argv,&megaFuse);
 }

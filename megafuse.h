@@ -16,7 +16,7 @@ struct file_stat
 
 struct file_cache_row
 {
-    enum CacheStatus{WAIT_D_TOPEN,DOWNLOADING,AVAILABLE};
+    enum CacheStatus{WAIT_D_TOPEN,DOWNLOADING,UPLOADING,AVAILABLE};
     std::string localname;
 
     CacheStatus status;
@@ -26,7 +26,7 @@ struct file_cache_row
     time_t last_modified;
     int td;
     bool modified;
-    file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false){};
+    file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0){};
 };
 
 class MegaFuseCallback : public DemoApp
@@ -83,6 +83,7 @@ class MegaFuse : public DemoApp
     int login_ret;
     int opend_ret;
     int putnodes_ret;
+    int unlink_ret;
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);
@@ -91,6 +92,8 @@ class MegaFuse : public DemoApp
     int release(const char *path, struct fuse_file_info *fi);
     int mkdir(const char * path, mode_t mode);
     int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
+    int create(const char *path, mode_t mode, struct fuse_file_info * fi);
+    int write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi);
 
 
 };

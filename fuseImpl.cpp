@@ -28,10 +28,8 @@ std::map<uint64_t,file_info> open_files;
 
 extern "C" int hello_write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
-    int s = pwrite(fi->fh,buf,size,offset);
-    open_files[fi->fh].modified = true;
 
-    return s;
+    return megaFuse->write(path,buf,size,offset,fi);
 }
 
 extern "C" int hello_getattr(const char *path, struct stat *stbuf)
@@ -70,19 +68,7 @@ extern "C" int hello_mkdir(const char * path, mode_t mode)
 }
 extern "C" int hello_create(const char *path, mode_t mode, struct fuse_file_info * fi)
 {
-    char *tmp = tmpnam(NULL);
-
-    printf("fuse: create %s\n",tmp);
-    int fd = open (tmp,O_RDWR | O_CREAT,S_IRUSR | S_IWUSR);
-
-    if (fd < 0)
-        return -EIO;
-
-    fi->fh = fd;
-    open_files[fd].localname = tmp;
-    open_files[fd].remotename = path;
-    open_files[fd].modified = true;
-    return 0;
+    return megaFuse->create(path,mode,fi);
 }
 
 

@@ -97,19 +97,36 @@ std::vector<std::string> MegaFuse::ls(std::string path)
 int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 {
     std::lock_guard<std::mutex>lock(api_mutex);
+    printf("getattr chiamato\n");
+    {
+        std::lock_guard<std::mutex>lock2(engine_mutex);
 
-    engine_mutex.lock();
     std::cout <<"PATH: "<<path<<std::endl;
     Node *n = nodeByPath(path);
     if(!n)
     {
-        engine_mutex.unlock();
+        printf("erroraccio\n");
+        for(auto it = file_cache.cbegin();it != file_cache.cend();++it)
+            if(it->first == std::string(path))
+                {
+                    stbuf->st_mode = S_IFREG | 0555;
+                    stbuf->st_nlink = 1;
+                    stbuf->st_size = it->second.size;
+                    stbuf->st_mtime = it->second.last_modified;
+                    return 0;
+
+                }
+
+
+
+
         return -ENOENT;
     }
     switch (n->type)
     {
     case FILENODE:
-        stbuf->st_mode = S_IFREG | 0444;
+        printf("filenode richiesto\n");
+        stbuf->st_mode = S_IFREG | 0555;
         stbuf->st_nlink = 1;
         stbuf->st_size = n->size;
         stbuf->st_mtime = n->mtime;
@@ -117,15 +134,17 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 
     case FOLDERNODE:
     case ROOTNODE:
+        printf("rootnode richiesto\n");
         stbuf->st_mode = S_IFDIR | 0755;
         stbuf->st_nlink = 1;
         stbuf->st_size = 4096;
         stbuf->st_mtime = n->mtime;
         break;
     default:
-        return -EINVAL;
+        printf("einval nodo\n");
+         -EINVAL;
     }
-    engine_mutex.unlock();
+    }
     return 0;
 
 }
@@ -149,7 +168,11 @@ Node* MegaFuse::nodeByPath(std::string path)
         abort();
     }
     if (path == "/")
-        return client->nodebyhandle(client->rootnodes[0]);
+    {
+        Node*n = client->nodebyhandle(client->rootnodes[0]);
+        n->type = ROOTNODE;
+        return n;
+    }
     if(path[0] == '/')
         path = path.substr(1);
     Node *n = client->nodebyhandle(client->rootnodes[0]);
@@ -191,28 +214,17 @@ Node* MegaFuse::childNodeByName(Node *p,std::string name)
 
 bool MegaFuse::upload(std::string filename,std::string dst)
 {
-    /* std::lock_guard<std::mutex>lock(api_mutex);
+     std::lock_guard<std::mutex>lock(api_mutex);
      engine_mutex.lock();
 
 
-     int pos = dst.find_last_of('/');
-     std::string base = dst.substr(0,pos);
-     std::string dstname = dst.substr(pos+1);
-     if(base == "")
-         base = "/";
-     if(dstname == "")
-         dstname = filename;
+     auto path = splitPath(filename);
 
-     Node *n = nodeByPath(base.c_str());
-     printf("base: %s, dst: %s\n",base.c_str(),dstname.c_str());
+     Node *n = nodeByPath(path.first.c_str());
      if(!n)
          exit(10);
      handle nh = n->nodehandle;
-     client->putq.push_back(new AppFilePut(filename.c_str(),nh,"",dstname.c_str()));
-     megaFuseCallback.upload_lock.lock();
-     engine_mutex.unlock();
-     megaFuseCallback.upload_lock.lock();
-     megaFuseCallback.upload_lock.unlock();*/
+
     return true;
 
 
@@ -222,18 +234,38 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 {
     std::lock_guard<std::mutex>lock(api_mutex);
     {
-        auto it = file_cache.find(std::string(path));
         std::lock_guard<std::mutex>lock(engine_mutex);
-
+        auto it = file_cache.find(std::string(path));
         it->second.n_clients--;
+        printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
+        if(!it->second.n_clients && it->second.modified)
+        {
+            it->second.status = file_cache_row::UPLOADING;
+            int td = client->topen(it->second.localname.c_str(), -1, 1);
+            it->second.td = td;
+
+        }
+        if(!it->second.n_clients && it->second.status ==file_cache_row::DOWNLOADING)
+        {
+            client->tclose(it->second.td);
+            file_cache.erase(it);
+        }
+
+
     }
+
     return 0;
 }
 
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
+    if(fi->flags &(O_WRONLY | O_RDWR))
+        return create(p,O_RDWR,fi);
+    printf("flags: %x\n\n",fi->flags);
     std::lock_guard<std::mutex>lock(api_mutex);
     std::string path(p);
+
+
     //auto path = splitPath(std::string(p));
     {
         std::lock_guard<std::mutex>lock(engine_mutex);
@@ -258,22 +290,19 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
             return -EIO;
 
         file_cache[path].td = td;
-        file_cache[path].last_modified = n->mtime;   //client->getq.push_back(new AppFileGet(n->nodehandle));
+        file_cache[path].last_modified = n->mtime;
+        file_cache[path].size = n->size;   //client->getq.push_back(new AppFileGet(n->nodehandle));
 
     }
 
     {
 
         opend_ret=0;
-        printf("opend: aspetto il risultato\n");
+        printf("opend: aspetto il risultato per il file %s\n",p);
         std::unique_lock<std::mutex> lk(cvm);
         cv.wait(lk, [this] {return opend_ret;});
     }
-    /*
-        if(opend_ret < 0)
-            return -EIO;
-
-        printf("ora ")*/
+        printf("opend: proseguo");
     {
         auto it = file_cache.find(std::string(p));
         std::lock_guard<std::mutex>lock(engine_mutex);
@@ -320,9 +349,61 @@ bool MegaFuse::download(std::string filename,std::string dst)
 
 }
 
+int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
+{
+    std::lock_guard<std::mutex>lock(api_mutex);
+    std::lock_guard<std::mutex>lock2(engine_mutex);
+
+    auto it = file_cache.find(std::string(path));
+    if(it != file_cache.end())
+    {
+            it->second.n_clients++;
+            if(it->second.status == file_cache_row::DOWNLOADING)
+                client->tclose(it->second.td); //not sure if it will wowrk
+            it->second.size = 0;
+            it->second.status = file_cache_row::AVAILABLE;
+            printf("tronco a 0 il file %s\n",it->second.localname.c_str());
+            truncate(it->second.localname.c_str(), 0);
+            return 0;
+    }
+    else
+    {
+        printf("creat, cache miss\n");
+        auto path2 = splitPath(path);
+        Node *n = nodeByPath(path2.first);
+        if(!n)
+            return -EINVAL;
+        char *tmp = tmpnam(NULL);
+        int fd = creat(tmp, S_IRUSR | S_IWUSR);
+        close(fd);
+        file_cache[path].n_clients = 1;
+        file_cache[path].modified = true;
+        file_cache[path].localname = tmp;
+        return 0;
+    }
+}
+
+
+int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
+{
+    std::lock_guard<std::mutex>lock(api_mutex);
+    std::lock_guard<std::mutex>lock2(engine_mutex);
+    auto it = file_cache.find(path);
+
+    chmod(it->second.localname.c_str(),S_IWUSR|S_IRUSR);
+    printf("write, apro cache: %s\n",it->second.localname.c_str());
+    int fd = ::open(it->second.localname.c_str(),O_WRONLY);
+    if (fd < 0 )
+        return fd;
+    int s = pwrite(fd,buf,size,offset);
+    close(fd);
+    it->second.modified=true;
+    return s;
+}
+
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-        std::lock_guard<std::mutex>lock(api_mutex);
+    std::lock_guard<std::mutex>lock(api_mutex);
 
     engine_mutex.lock();
     printf("apro cache: %s\n",file_cache[path].localname.c_str());
@@ -348,78 +429,73 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 
 int MegaFuse::mkdir(const char * p, mode_t mode)
 {
-       std::lock_guard<std::mutex>lock(api_mutex);
-       engine_mutex.lock();
+    std::lock_guard<std::mutex>lock(api_mutex);
+    engine_mutex.lock();
 
-        auto path = splitPath(p);
-        std::string base = path.first;
-        std::string newname = path.second;
+    auto path = splitPath(p);
+    std::string base = path.first;
+    std::string newname = path.second;
 
-                                       Node* n = nodeByPath(base.c_str());
-                                       SymmCipher key;
-    								string attrstring;
-    								byte buf[Node::FOLDERNODEKEYLENGTH];
-    								NewNode* newnode = new NewNode[1];
+    Node* n = nodeByPath(base.c_str());
+    SymmCipher key;
+    string attrstring;
+    byte buf[Node::FOLDERNODEKEYLENGTH];
+    NewNode* newnode = new NewNode[1];
 
-    								// set up new node as folder node
-    								newnode->source = NEW_NODE;
-    								newnode->type = FOLDERNODE;
-    								newnode->nodehandle = 0;
-    								newnode->mtime = newnode->ctime = time(NULL);
-    								newnode->parenthandle = UNDEF;
+    // set up new node as folder node
+    newnode->source = NEW_NODE;
+    newnode->type = FOLDERNODE;
+    newnode->nodehandle = 0;
+    newnode->mtime = newnode->ctime = time(NULL);
+    newnode->parenthandle = UNDEF;
 
-    								// generate fresh random key for this folder node
-    								PrnGen::genblock(buf,Node::FOLDERNODEKEYLENGTH);
-    								newnode->nodekey.assign((char*)buf,Node::FOLDERNODEKEYLENGTH);
-    								key.setkey(buf);
+    // generate fresh random key for this folder node
+    PrnGen::genblock(buf,Node::FOLDERNODEKEYLENGTH);
+    newnode->nodekey.assign((char*)buf,Node::FOLDERNODEKEYLENGTH);
+    key.setkey(buf);
 
-    								// generate fresh attribute object with the folder name
-    								AttrMap attrs;
-    								attrs.map['n'] = newname;
+    // generate fresh attribute object with the folder name
+    AttrMap attrs;
+    attrs.map['n'] = newname;
 
-    								// JSON-encode object and encrypt attribute string
-    								attrs.getjson(&attrstring);
-    								client->makeattr(&key,&newnode->attrstring,attrstring.c_str());
+    // JSON-encode object and encrypt attribute string
+    attrs.getjson(&attrstring);
+    client->makeattr(&key,&newnode->attrstring,attrstring.c_str());
 
-    								// add the newly generated folder node
-    								client->putnodes(n->nodehandle,newnode,1);
-       {
+    // add the newly generated folder node
+    client->putnodes(n->nodehandle,newnode,1);
+    {
 
-       engine_mutex.unlock();
+        engine_mutex.unlock();
         putnodes_ret = 0;
         std::unique_lock<std::mutex> lk(cvm);
 
         cv.wait(lk, [this] {return putnodes_ret;});
-       }
-       if(putnodes_ret < 0)
+    }
+    if(putnodes_ret < 0)
         return -1;
     return 0;
 }
 int MegaFuse::unlink(std::string filename)
 {
-    /* std::lock_guard<std::mutex>lock(api_mutex);
+    std::lock_guard<std::mutex>lock(api_mutex);
+    {
+        std::lock_guard<std::mutex>lock(engine_mutex);
+        Node *n = nodeByPath(filename.c_str());
+        if(!n)
+                    return -ENOENT;
+        error e = client->unlink(n);
+        if(e)
+            return -ENOENT;
+    }
+    {
+        putnodes_ret = 0;
+                std::unique_lock<std::mutex> lk(cvm);
+        cv.wait(lk, [this] {return unlink_ret;});
+    }
 
-     engine_mutex.lock();
-     Node *n = nodeByPath(filename.c_str());
-     if(!n)
-     {
-         engine_mutex.unlock();
-         return -ENOENT;
-     }
-
-
-     error e = client->unlink(n);
-     if(e)
-     {
-         engine_mutex.unlock();
-         return -ENOENT;
-     }
-     megaFuseCallback.unlink_lock.lock();
-     engine_mutex.unlock();
-     megaFuseCallback.unlink_lock.lock();
-     megaFuseCallback.unlink_lock.unlock();
-     if(megaFuseCallback.last_error)
-         return -EIO;*/
+    if(unlink_ret<0)
+        return -EIO;
     return 0;
 
 }

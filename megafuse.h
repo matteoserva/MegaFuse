@@ -60,7 +60,7 @@ class MegaFuse : public DemoApp
     int unlink(std::string);
     std::vector<std::string> ls(std::string path);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
-
+    void check_cache();
     /*callbacks*/
 
     error last_error;

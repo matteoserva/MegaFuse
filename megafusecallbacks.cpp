@@ -21,7 +21,7 @@ void MegaFuse::transfer_failed(int td,  error e)
 void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, const byte* filekey, SymmCipher* key)
 {
     //DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
-    printf("upload riuscito");
+    printf("upload riuscito\n");
     auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
 
     auto path = splitPath(it->first);

@@ -105,7 +105,6 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
     Node *n = nodeByPath(path);
     if(!n)
     {
-        printf("erroraccio\n");
         for(auto it = file_cache.cbegin();it != file_cache.cend();++it)
             if(it->first == std::string(path))
                 {
@@ -116,10 +115,6 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
                     return 0;
 
                 }
-
-
-
-
         return -ENOENT;
     }
     switch (n->type)
@@ -229,7 +224,24 @@ bool MegaFuse::upload(std::string filename,std::string dst)
 
 
 }
+void MegaFuse::check_cache()
+{
+    if(file_cache.size() < 2)
+        return;
+    std::lock_guard<std::mutex>lock(engine_mutex);
+    for(auto it = file_cache.begin();it!= file_cache.end();++it)
+        if(it->second.n_clients==0 && it->second.status ==file_cache_row::AVAILABLE)
+        {
+            printf("rimuovo il file %s dalla cache\n",it->first.c_str());
+            if(it->second.status ==file_cache_row::DOWNLOADING) //UPLOADING FILES IGNORED
+                client->tclose(it->second.td);
+            ::unlink(it->second.localname.c_str());
+            it = file_cache.erase(it);
 
+        }
+
+    printf("check cache \n");
+}
 int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 {
     std::lock_guard<std::mutex>lock(api_mutex);
@@ -253,7 +265,7 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 
 
     }
-
+    check_cache();
     return 0;
 }
 
@@ -302,7 +314,6 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
         std::unique_lock<std::mutex> lk(cvm);
         cv.wait(lk, [this] {return opend_ret;});
     }
-        printf("opend: proseguo");
     {
         auto it = file_cache.find(std::string(p));
         std::lock_guard<std::mutex>lock(engine_mutex);

@@ -406,6 +406,8 @@ int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
 
 #include "config.h"
+
+char * arg[] = {"megafuse","-d","/tmp/t"};
 int main(int argc, char **argv)
 {
 	// instantiate app components: the callback processor (DemoApp),
@@ -422,7 +424,7 @@ int main(int argc, char **argv)
     printf("login successful\n");
     megaFuse.open("/megaclient",nullptr);
 
-	while(true)
-        usleep(500000);
-	megafuse_mainpp(argc,argv,&megaFuse);
+	//while(true)
+        //usleep(500000);
+	megafuse_mainpp(3,arg,&megaFuse);
 }

@@ -48,6 +48,30 @@ bool MegaFuse::login(std::string username, std::string password)
         return true;
 }
 
+int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
+{
+	std::cout << path <<std::endl;
+    engine_mutex.lock();
+
+    Node* n = nodeByPath(path);
+    if(!n)
+    {
+        engine_mutex.unlock();
+        return -EIO;
+    }
+
+    filler(buf, ".", NULL, 0);
+	filler(buf, "..", NULL, 0);
+    if(n->type == FOLDERNODE || n->type == ROOTNODE)
+		{
+            for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
+            filler(buf, (*it)->displayname(), NULL, 0);
+		}
+   engine_mutex.unlock();
+
+	return 0;
+}
+
 std::vector<std::string> MegaFuse::ls(std::string path)
 {
     /*std::cout << path <<std::endl;

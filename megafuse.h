@@ -1,7 +1,7 @@
 #include "megacli.h"
 #include <thread>
 #include <mutex>
-
+#include <fuse.h>
 struct file_stat
 {
     int mode;
@@ -86,5 +86,7 @@ class MegaFuse : public DemoApp
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);
+    int readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi);
+
 
 };

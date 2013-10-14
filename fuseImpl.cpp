@@ -180,19 +180,7 @@ extern "C" int hello_create(const char *path, mode_t mode, struct fuse_file_info
 extern "C" int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi)
 {
-	(void) offset;
-	(void) fi;
-
-	//if (strcmp(path, "/") != 0)
-		//return -ENOENT;
-
-    auto l = megaFuse->ls(std::string(path));
-	filler(buf, ".", NULL, 0);
-	filler(buf, "..", NULL, 0);
-	for(auto t = l.cbegin(); t!= l.cend(); t++)
-        filler(buf, t->c_str(), NULL, 0);
-
-	return 0;
+	return megaFuse->readdir(path,buf,filler,offset,fi);
 }
 
 extern "C" int megafuse_main(int argc,char**argv);

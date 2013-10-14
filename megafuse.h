@@ -1,5 +1,6 @@
 #include "megacli.h"
 #include <thread>
+#include <mutex>
 
 struct file_stat
 {

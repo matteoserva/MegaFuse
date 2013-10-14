@@ -1,4 +1,5 @@
 #include "fuseFileCache.h"
+#include <unistd.h>
 
 #define MAX_CACHE_ENTRIES 50
 #define MIN_CACHE_ENTRIES 20

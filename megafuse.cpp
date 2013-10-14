@@ -285,7 +285,6 @@ bool MegaFuse::download(std::string filename,std::string dst)
     megaFuseCallback.download_lock.lock();
     megaFuseCallback.download_lock.unlock();
     delete client->gettransfer((transfer_list*)&client->getq,megaFuseCallback.result);
-    client->exec();
     if(megaFuseCallback.last_error)
         return false;
 

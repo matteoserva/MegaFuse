@@ -2,6 +2,7 @@
 #include <thread>
 #include <mutex>
 #include <fuse.h>
+#include <condition_variable>
 struct file_stat
 {
     int mode;
@@ -57,9 +58,7 @@ class MegaFuse : public DemoApp
     bool download(std::string,std::string dst);
     bool upload(std::string,std::string dst);
     int unlink(std::string);
-    int mkdir(std::string);
     std::vector<std::string> ls(std::string path);
-    file_stat getAttr(std::string path);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
 
     /*callbacks*/
@@ -83,10 +82,15 @@ class MegaFuse : public DemoApp
     std::condition_variable cv;
     int login_ret;
     int opend_ret;
+    int putnodes_ret;
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);
     int readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi);
+    int getAttr(const char *path, struct stat *stbuf);
+    int release(const char *path, struct fuse_file_info *fi);
+    int mkdir(const char * path, mode_t mode);
+    int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 
 
 };

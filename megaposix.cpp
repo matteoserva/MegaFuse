@@ -422,7 +422,8 @@ int main(int argc, char **argv)
         exit(1);
     }
     printf("login successful\n");
-    megaFuse.open("/megaclient",nullptr);
+    usleep(500000);
+    //megaFuse.open("/megaclient",nullptr);
 
 	//while(true)
         //usleep(500000);

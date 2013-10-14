@@ -5,10 +5,11 @@ void MegaFuse::putnodes_result(error e, targettype, NewNode* nn)
 {
     delete[] nn;
 
-
-
-    last_error = e;
-//    putnodes_lock.unlock();
+    {
+        std::lock_guard<std::mutex> lk(cvm);
+        putnodes_ret  = (e)?-1:1;
+    }
+    cv.notify_one();
 }
 
 void MegaFuse::transfer_failed(int td,  error e)
@@ -58,6 +59,7 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
             remotename = it->first;
     printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
     file_cache[remotename].status = file_cache_row::DOWNLOADING;
+    file_cache[remotename].localname = tmp;
     {
         std::lock_guard<std::mutex> lk(cvm);
         opend_ret = 1;
@@ -107,10 +109,14 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
 
 	cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
+
 	last = time(NULL);
     {
         std::lock_guard<std::mutex> lk(cvm);
-        it->second.available_bytes = bytes;
+        struct stat st;
+        stat(it->second.localname.c_str(),&st);
+
+        it->second.available_bytes = st.st_size;
     }
     cv.notify_all();
 }

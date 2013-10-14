@@ -330,7 +330,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
     {
         std::unique_lock<std::mutex> lk(cvm);
         engine_mutex.unlock();
-        cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.available_bytes < (offset+size+512*1024));});
+        cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.available_bytes < (offset+size));});
         engine_mutex.lock();
     }
     int fd = ::open(file_cache[path].localname.c_str(),O_RDONLY);

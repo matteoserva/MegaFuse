@@ -407,7 +407,6 @@ int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
 #include "config.h"
 
-char * arg[] = {"megafuse","-d","/tmp/s"};
 int main(int argc, char **argv)
 {
 	// instantiate app components: the callback processor (DemoApp),
@@ -427,5 +426,5 @@ int main(int argc, char **argv)
 
 	//while(true)
         //usleep(500000);
-	megafuse_mainpp(3,arg,&megaFuse);
+	megafuse_mainpp(argc,argv,&megaFuse);
 }

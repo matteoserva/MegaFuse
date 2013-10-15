@@ -3,16 +3,6 @@
 #include <mutex>
 #include <fuse.h>
 #include <condition_variable>
-struct file_stat
-{
-    int mode;
-    int size;
-    int nlink;
-    int error;
-    bool dir;
-    time_t mtime;
-    file_stat() : error(0){};
-};
 
 struct file_cache_row
 {
@@ -24,9 +14,9 @@ struct file_cache_row
     int available_bytes;
     int n_clients;
     time_t last_modified;
-
+    int startOffset;
     bool modified;
-    file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0){};
+    file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0){};
 };
 
 class MegaFuseCallback : public DemoApp

@@ -69,6 +69,19 @@ void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, c
 
 		client->makeattr(key,&newnode->attrstring,putf->filename.c_str());
 
+        {
+
+            Node *p = client->nodebyhandle(putf->target);
+            for (node_list::iterator it = p->children.begin(); it != p->children.end(); it++)
+            {
+                if (!strcmp(putf->newname.c_str(),(*it)->displayname()))
+                {
+                    client->unlink(*it);
+                    break;
+                }
+            }
+        }
+
 		if (putf->targetuser.size())
 		{
 			cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
@@ -138,14 +151,19 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
     last_error = API_OK;
     result = td;
 	printf("topen riuscito\n");
-	char *tmp = tmpnam(NULL);
-    client->dlopen(td,tmp);
+
+
 
     std::string remotename = "";
-
+    std::string tmp;
     for(auto it = file_cache.cbegin();it!=file_cache.cend();++it)
         if(it->second.status == file_cache_row::WAIT_D_TOPEN && it->second.td == td)
-            remotename = it->first;
+            {
+                remotename = it->first;
+                tmp = it->second.localname;
+            }
+        chmod(tmp.c_str(),S_IWUSR|S_IRUSR);
+    client->dlopen(td,tmp.c_str());
     printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
     file_cache[remotename].status = file_cache_row::DOWNLOADING;
     file_cache[remotename].localname = tmp;
@@ -154,12 +172,12 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
         std::lock_guard<std::mutex> lk(cvm);
         opend_ret = 1;
     }
-    cv.notify_one();
+    cv.notify_all();
 }
 
 void MegaFuse::transfer_failed(int td, string& filename, error e)
 {
-    printf("download fallito\n");
+    printf("download fallito: %d\n",e);
     //DemoApp::transfer_failed(td,filename,e);
     last_error=e;
     //download_lock.unlock();
@@ -176,16 +194,38 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(in
 void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
-    std::string remotename = it->first;
-    {
-        std::lock_guard<std::mutex> lk(cvm);
-        it->second.status = file_cache_row::AVAILABLE;
-    }
-    cv.notify_all();
 
-    printf("download riuscito per %s,%d\n",remotename.c_str(),td);
-    client->tclose(td);
-    last_error=API_OK;
+    client->tclose(it->second.td);
+    it->second.td = -1;
+
+    if(it->second.startOffset == 0)
+    {
+        std::string remotename = it->first;
+        {
+            std::lock_guard<std::mutex> lk(cvm);
+            it->second.status = file_cache_row::AVAILABLE;
+        }
+        cv.notify_all();
+
+        printf("download riuscito per %s,%d\n",remotename.c_str(),td);
+        last_error=API_OK;
+    }
+    else
+    {
+            printf("----------------download reissued for %s\n",it->first.c_str());
+
+            Node*n = nodeByPath(it->first);
+            int td = client->topen(n->nodehandle, NULL, 0,-1, 1);
+            if(td < 0)
+                return;
+            it->second.td = td;
+            it->second.startOffset = 0;
+            it->second.status = file_cache_row::WAIT_D_TOPEN;
+            it->second.available_bytes=0;
+
+    }
+
+
     //download_lock.unlock();
 }
 

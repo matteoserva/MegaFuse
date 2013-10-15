@@ -94,6 +94,59 @@ std::vector<std::string> MegaFuse::ls(std::string path)
     return l;*/
 }
 
+int MegaFuse::rename(const char * src, const char *dst)
+{
+    std::lock_guard<std::mutex>lock(api_mutex);
+    {
+        std::lock_guard<std::mutex>lock2(engine_mutex);
+        Node *n_src = nodeByPath(src);
+        if(!n_src)
+            return -1;
+        Node *n_dst = nodeByPath(dst);
+        if(!n_dst)
+        {
+            auto path = splitPath(dst);
+            n_dst = nodeByPath(path.first);
+            if(!n_dst)
+                return -2;
+
+            if ( client->checkmove(n_src,n_dst) != API_OK)
+                return -3;
+            n_src->attrs.map['n'] = path.second.c_str();
+            if (client->setattr(n_src))
+                return -4;
+            return 0;
+        }
+
+
+
+        if(n_dst->type == FILENODE)
+        {
+            if(client->checkmove(n_src,n_dst->parent) != API_OK)
+                return -1;
+            n_src->attrs.map['n'] = n_dst->attrs.map['n'];
+			error e = client->setattr(n_src);
+
+			if (e) return -1;
+            e = client->unlink(n_dst);
+            if(e) return -1;
+        }
+        else
+        {
+            client->checkmove(n_src,n_dst);
+
+
+        }
+
+    }
+
+    return 0;
+
+
+
+}
+
+
 int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 {
     std::lock_guard<std::mutex>lock(api_mutex);
@@ -224,6 +277,13 @@ bool MegaFuse::upload(std::string filename,std::string dst)
 
 
 }
+
+void MegaFuse::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
+{
+    ::unlink(it->second.localname.c_str());
+    it = file_cache.erase(it);
+}
+
 void MegaFuse::check_cache()
 {
     if(file_cache.size() < 2)
@@ -235,15 +295,19 @@ void MegaFuse::check_cache()
             printf("rimuovo il file %s dalla cache\n",it->first.c_str());
             if(it->second.status ==file_cache_row::DOWNLOADING) //UPLOADING FILES IGNORED
                 client->tclose(it->second.td);
-            ::unlink(it->second.localname.c_str());
-            it = file_cache.erase(it);
+            eraseCacheRow(it);
 
         }
 
     printf("check cache \n");
 }
+
+void createthumbnail(const char* filename, unsigned size, string* result);
+
+
 int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 {
+    int ret = 0;
     std::lock_guard<std::mutex>lock(api_mutex);
     {
         std::lock_guard<std::mutex>lock(engine_mutex);
@@ -252,21 +316,54 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
         printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
         if(!it->second.n_clients && it->second.modified)
         {
+
+
+            int td;
+
+            /*do
+            {
+                td = client->topen(it->second.localname.c_str(), -1, 1);
+            } while(td < 0);
+
+
+            if(td >= 0)
+            {
+                it->second.status = file_cache_row::UPLOADING;
+                it->second.td = td;
+
+                std::string last_thumbnail;
+                createthumbnail(it->second.localname.c_str(),120,&last_thumbnail);
+                if (last_thumbnail.size())
+                {
+                    cout << "Image detected and thumbnail extracted, size " << last_thumbnail.size() << " bytes" << endl;
+                    client->putfa(&client->ft[td].key,client->uploadhandle(td),THUMBNAIL120X120,(const byte*)last_thumbnail.data(),last_thumbnail.size());
+                    printf ("image detected, fine funzione\n\n");
+                }
+
+
+            }
+            else
+            printf("\n\n\n\nuploafallito\n");*/
+
+            auto target = splitPath(it->first);
+            Node *n = nodeByPath(target.first);
+            client->putq.push_back(new AppFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str()));
             it->second.status = file_cache_row::UPLOADING;
-            int td = client->topen(it->second.localname.c_str(), -1, 1);
-            it->second.td = td;
+
+
+
 
         }
         if(!it->second.n_clients && it->second.status ==file_cache_row::DOWNLOADING)
         {
             client->tclose(it->second.td);
-            file_cache.erase(it);
+            eraseCacheRow(it);
         }
 
 
     }
     check_cache();
-    return 0;
+    return ret;
 }
 
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
@@ -288,13 +385,19 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
         if(file_cache.find(path) != file_cache.end())
         {
-
-
             auto it = file_cache.find(std::string(p));
+            if(it->second.last_modified == n->mtime)
+            {
 
-            it->second.n_clients++;
-            return 0;
-
+                it->second.n_clients++;
+                return 0;
+            }
+            else if(!it->second.n_clients)
+            {
+                eraseCacheRow(it);
+            }
+            else
+                return -EAGAIN;
         }
 
         int td = client->topen(n->nodehandle, NULL, 0,-1, 1);

@@ -18,21 +18,29 @@ void MegaFuse::transfer_failed(int td,  error e)
     last_error = e;
   //  upload_lock.unlock();
 }
+
+
+
+std::string last_thumbnail;
+SymmCipher last_key;
+
+void createthumbnail(const char* filename, unsigned size, string* result);
+
+
 void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, const byte* filekey, SymmCipher* key)
 {
+
     //DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
     printf("upload riuscito\n");
-    auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
+    FilePut* putf = (FilePut*)client->gettransfer((transfer_list*)&client->putq,td);
 
-    auto path = splitPath(it->first);
-    {
-        Node *n = nodeByPath(it->first);
-        if(n)
-            client->unlink(n);
-    }
-
-		Node* n = nodeByPath(path.first);
-		handle target = n->nodehandle;
+	if (putf)
+	{
+		if (!putf->targetuser.size() && !client->nodebyhandle(putf->target))
+		{
+			cout << "Upload target folder inaccessible, using /" << endl;
+			putf->target = client->rootnodes[0];
+		}
 
 		NewNode* newnode = new NewNode[1];
 
@@ -48,31 +56,57 @@ void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, c
 		// file's crypto key
 		newnode->nodekey.assign((char*)filekey,Node::FILENODEKEYLENGTH);
 		newnode->mtime = newnode->ctime = time(NULL);
-		it->second.last_modified = newnode->ctime;
 		newnode->type = FILENODE;
 		newnode->parenthandle = UNDEF;
 
 		AttrMap attrs;
 
-		MegaClient::unescapefilename(&path.second);
+		MegaClient::unescapefilename(&putf->filename);
 
-		attrs.map['n'] =  path.second;
+		attrs.map['n'] = putf->newname.size() ? putf->newname : putf->filename;
 
-		attrs.getjson(&path.second);
+		attrs.getjson(&putf->filename);
 
-		client->makeattr(key,&newnode->attrstring,path.second.c_str());
+		client->makeattr(key,&newnode->attrstring,putf->filename.c_str());
 
-		client->putnodes(target,newnode,1);
+		if (putf->targetuser.size())
+		{
+			cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
+			client->putnodes(putf->targetuser.c_str(),newnode,1);
+		}
+		else client->putnodes(putf->target,newnode,1);
 
-    client->tclose(td);
-    it->second.status = file_cache_row::AVAILABLE;
-    it->second.td = -1;
-    it->second.modified = false;
+
+
+        auto it = file_cache.end();
+            for(auto i = file_cache.begin();i!=file_cache.end();i++)
+                if(i->second.localname == putf->filename)
+                    it = i;
+        it->second.status = file_cache_row::AVAILABLE;
+        it->second.td = -1;
+        it->second.modified = false;
+
+
+
+		delete putf;
+	}
+	else cout << "(Canceled transfer, ignoring)" << endl;
+
+	client->tclose(td);
+
 
     //upload_lock.unlock();
 }
 
+void MegaFuse::putfa_result(handle, fatype, error e)
+{
+    printf("putfa ricevuto\n\n");
+    if(e)
+        printf("errore putfa\n");
 
+
+
+}
 void MegaFuse::topen_result(int td, error e)
 {
 

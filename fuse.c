@@ -19,6 +19,7 @@
 static const char *hello_str = "Hello World!\n";
 static const char *hello_path = "/hello";
 
+int hello_rename(const char * src, const char *dst);
 
 int hello_getattr(const char *path, struct stat *stbuf);
 int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);
@@ -53,6 +54,7 @@ static struct fuse_operations hello_oper = {
 	.truncate   = hello_truncate,
 	.write      = hello_write,
 	.mkdir      = hello_mkdir,
+	.rename     =hello_rename,
 };
 
 

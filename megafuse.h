@@ -18,13 +18,13 @@ struct file_cache_row
 {
     enum CacheStatus{WAIT_D_TOPEN,DOWNLOADING,UPLOADING,AVAILABLE};
     std::string localname;
-
+    int td;
     CacheStatus status;
     int size;
     int available_bytes;
     int n_clients;
     time_t last_modified;
-    int td;
+
     bool modified;
     file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0){};
 };
@@ -60,7 +60,9 @@ class MegaFuse : public DemoApp
     int unlink(std::string);
     std::vector<std::string> ls(std::string path);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
+
     void check_cache();
+    void eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
     /*callbacks*/
 
     error last_error;
@@ -75,7 +77,7 @@ class MegaFuse : public DemoApp
     void unlink_result(handle, error);
     void putnodes_result(error, targettype, NewNode*);
     void transfer_update(int, m_off_t, m_off_t, dstime);
-
+    void putfa_result(handle, fatype, error);
 
     /*inter thread*/
     std::mutex cvm;
@@ -94,6 +96,8 @@ class MegaFuse : public DemoApp
     int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
     int create(const char *path, mode_t mode, struct fuse_file_info * fi);
     int write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi);
+    int rename(const char * src, const char *dst);
+
 
 
 };

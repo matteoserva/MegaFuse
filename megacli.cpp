@@ -71,7 +71,7 @@ static byte signuppwchallenge[SymmCipher::KEYLENGTH], signupencryptedmasterkey[S
 // - must respect JPEG EXIF rotation tag
 // - must save at 85% quality
 // returns result as string
-static void createthumbnail(const char* filename, unsigned size, string* result)
+void createthumbnail(const char* filename, unsigned size, string* result)
 {
 	FIBITMAP* dib;
 	FIBITMAP* tdib;

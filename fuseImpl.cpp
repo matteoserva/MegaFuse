@@ -50,7 +50,10 @@ extern "C" int hello_read(const char *path, char *buf, size_t size, off_t offset
 	return megaFuse->read(path,buf,size,offset,fi);
 }
 
-
+extern "C" int hello_rename(const char * src, const char *dst)
+{
+    return megaFuse->rename(src,dst);
+}
 extern "C" int hello_unlink(const char *path)
 {
     return megaFuse->unlink(path);

@@ -405,17 +405,27 @@ void term_echo(int echo)
 int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
 
-#include "config.h"
+#include "Config.h"
+
+char *arg[] = {"megafuse","-d","/tmp"};
+char mountpoint[256];
+
+
 
 int main(int argc, char **argv)
 {
 	// instantiate app components: the callback processor (DemoApp),
 	// the cURL HTTP I/O engine (CurlHttpIO) and the MegaClient itself
+	bool stop = Config::getInstance()->parseCommandLine(argc, argv);
+	if(stop)
+        exit(0);
+	Config::getInstance()->LoadConfig();
+
 	MegaFuse megaFuse;
-	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,APPKEY);
+	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	megacli();
 	megaFuse.start();
-	if(!megaFuse.login(USERNAME,PASSWORD))
+	if(!megaFuse.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
     {
         printf("login failed. exiting...\n");
         exit(1);
@@ -426,5 +436,7 @@ int main(int argc, char **argv)
 
 	//while(true)
         //usleep(500000);
-	megafuse_mainpp(argc,argv,&megaFuse);
+    strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
+    arg[2] = mountpoint;
+	megafuse_mainpp(3,arg,&megaFuse);
 }

@@ -550,9 +550,9 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
             printf("--------------read too slow, downloading the requested chunk");
             client->tclose(it->second.td);
             it->second.td = -1;
-            it->second.startOffset = offset;
+            it->second.startOffset = (16*1024)* (offset % (16*1024));
             Node*n = nodeByPath(it->first);
-            int td = client->topen(n->nodehandle, NULL, 4096* (offset % 4096),-1, 1);
+            int td = client->topen(n->nodehandle, NULL, it->second.startOffset,-1, 1);
             if(td < 0)
             {
                 engine_mutex.unlock();
@@ -595,6 +595,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
     int fd = ::open(file_cache[path].localname.c_str(),O_RDONLY);
     if (fd < 0 )
     {
+        printf("open fallita in read per il file %s\n",file_cache[path].localname.c_str());
         engine_mutex.unlock();
         return -EIO;
     }

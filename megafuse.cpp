@@ -518,7 +518,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 
     if(it->second.status == file_cache_row::DOWNLOADING)
     {
-        int bytesmissing = (offset+size) - (it->second.available_bytes + it->second.startOffset);
+        int bytesmissing = (offset+size) - (it->second.available_bytes);
         if(bytesmissing <1024*1024 && it->second.startOffset <= offset)
         {
 
@@ -552,14 +552,14 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
         }
 
         printf("mi metto in attesa di ricevere i dati necessari\n");
-        if(it->second.startOffset + it->second.available_bytes <= (offset+size))
+        if(it->second.available_bytes <= (offset+size))
         {
             engine_mutex.unlock();
             {
                 std::unique_lock<std::mutex> lk(cvm);
 
                 printf("lock acquisito, \n");
-                cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.startOffset + it->second.available_bytes < (offset+size));});
+                cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.available_bytes < (offset+size));});
                 printf("wait conclusa\n");
             }
                 engine_mutex.lock();

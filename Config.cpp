@@ -1,6 +1,8 @@
 #include "Config.h"
 #include <iostream>
 #include <string.h>
+#include <unistd.h>
+
 using namespace std;
 Config* Config::getInstance()
 {

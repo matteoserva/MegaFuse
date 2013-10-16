@@ -16,7 +16,8 @@ struct file_cache_row
     time_t last_modified;
     int startOffset;
     bool modified;
-    file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0){};
+    file_cache_row();
+    ~file_cache_row();
 };
 
 class MegaFuseCallback : public DemoApp

@@ -8,6 +8,19 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+file_cache_row::file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0)
+{
+    localname = tmpnam(NULL);
+    creat(localname.c_str(),S_IWUSR|S_IRUSR);
+
+
+}
+file_cache_row::~file_cache_row()
+{
+    unlink(localname.c_str());
+}
+
+
 void MegaFuse::event_loop(MegaFuse* that)
 {
     char *saved_line = NULL;
@@ -403,7 +416,6 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
         int td = client->topen(n->nodehandle, NULL, 0,-1, 1);
         if(td < 0)
             return -EIO;
-        file_cache[path].localname = tmpnam(NULL);
         file_cache[path].td = td;
         file_cache[path].last_modified = n->mtime;
         file_cache[path].size = n->size;   //client->getq.push_back(new AppFileGet(n->nodehandle));
@@ -487,12 +499,9 @@ int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
         Node *n = nodeByPath(path2.first);
         if(!n)
             return -EINVAL;
-        char *tmp = tmpnam(NULL);
-        int fd = creat(tmp, S_IRUSR | S_IWUSR);
-        close(fd);
+
         file_cache[path].n_clients = 1;
         file_cache[path].modified = true;
-        file_cache[path].localname = tmp;
         return 0;
     }
 }

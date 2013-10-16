@@ -3,7 +3,8 @@ MegaFuse
 
 Fuse module for the MEGA cloud storage provider (mega.co.nz) in c++
 
-You have to edit the file "config.h" before being able to compile it.
-to run, just execute: 
+please edit your config file "megafuse.conf" before running.
+
+to run,just
 make
-./megaclient -d /tmp/mountpoint
+./megaclient

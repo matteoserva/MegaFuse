@@ -697,3 +697,8 @@ int MegaFuse::open(std::string filename)
       return megaFuseCallback.result;*/
 
 }
+
+MegaFuse::~MegaFuse()
+{
+    file_cache.clear();
+}

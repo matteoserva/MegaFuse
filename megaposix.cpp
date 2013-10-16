@@ -439,4 +439,6 @@ int main(int argc, char **argv)
     strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
     arg[2] = mountpoint;
 	megafuse_mainpp(3,arg,&megaFuse);
+
+
 }

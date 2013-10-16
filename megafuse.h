@@ -51,7 +51,7 @@ class MegaFuse : public DemoApp
     int unlink(std::string);
     std::vector<std::string> ls(std::string path);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
-
+    ~MegaFuse();
     void check_cache();
     void eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
     /*callbacks*/

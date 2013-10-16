@@ -194,7 +194,7 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(in
 void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
-
+    printf("download complete\n");
     client->tclose(it->second.td);
     it->second.td = -1;
 
@@ -233,8 +233,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 {
 
 	static time_t last = time(NULL);
-	if(time(NULL) - last < 1)
-        return;
+
     std::string remotename = "";
 
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
@@ -243,9 +242,13 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
         printf("upload update\n");
         return;
     }
-	cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
+    if(time(NULL) - last >= 1)
+        {
+            cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
+        cout << "scaricato fino al byte " <<(it->second.startOffset+bytes) << " di: "<<size<<endl;
+        last = time(NULL);
+        }
 
-	last = time(NULL);
     {
         std::lock_guard<std::mutex> lk(cvm);
         struct stat st;
@@ -254,6 +257,10 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
         it->second.available_bytes = st.st_size;
     }
     cv.notify_all();
+
+    //WORKAROUND
+    if(it->second.startOffset && (it->second.startOffset+bytes)>size)
+       transfer_complete(td,NULL,NULL);
 }
 
 void MegaFuse::login_result(error e)

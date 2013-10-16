@@ -338,30 +338,6 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 
             int td;
 
-            /*do
-            {
-                td = client->topen(it->second.localname.c_str(), -1, 1);
-            } while(td < 0);
-
-
-            if(td >= 0)
-            {
-                it->second.status = file_cache_row::UPLOADING;
-                it->second.td = td;
-
-                std::string last_thumbnail;
-                createthumbnail(it->second.localname.c_str(),120,&last_thumbnail);
-                if (last_thumbnail.size())
-                {
-                    cout << "Image detected and thumbnail extracted, size " << last_thumbnail.size() << " bytes" << endl;
-                    client->putfa(&client->ft[td].key,client->uploadhandle(td),THUMBNAIL120X120,(const byte*)last_thumbnail.data(),last_thumbnail.size());
-                    printf ("image detected, fine funzione\n\n");
-                }
-
-
-            }
-            else
-            printf("\n\n\n\nuploafallito\n");*/
 
             auto target = splitPath(it->first);
             Node *n = nodeByPath(target.first);
@@ -529,17 +505,20 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
     return s;
 }
 
+
+
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-    std::lock_guard<std::mutex>lock(api_mutex);
 
+    std::lock_guard<std::mutex>lock(api_mutex);
     engine_mutex.lock();
+
     printf("apro cache: %s\n",file_cache[path].localname.c_str());
     auto it = file_cache.find(path);
 
     if(it->second.status == file_cache_row::DOWNLOADING)
     {
-        int bytesmissing = (offset+size) - it->second.available_bytes;
+        int bytesmissing = (offset+size) - (it->second.available_bytes + it->second.startOffset);
         if(bytesmissing <1024*1024 && it->second.startOffset <= offset)
         {
 
@@ -547,10 +526,10 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
         else
         {
 
-            printf("--------------read too slow, downloading the requested chunk");
+            printf("--------------read too slow, downloading the requested chunk\n");
             client->tclose(it->second.td);
             it->second.td = -1;
-            it->second.startOffset = (16*1024)* (offset % (16*1024));
+            it->second.startOffset = (16*1024)* (offset / (16*1024));
             Node*n = nodeByPath(it->first);
             int td = client->topen(n->nodehandle, NULL, it->second.startOffset,-1, 1);
             if(td < 0)
@@ -563,8 +542,9 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
             it->second.status = file_cache_row::WAIT_D_TOPEN;
             it->second.available_bytes=0;
             {
+                std::unique_lock<std::mutex> lk(cvm);
                 engine_mutex.unlock();
-            std::unique_lock<std::mutex> lk(cvm);
+
 
             cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::WAIT_D_TOPEN);});
             engine_mutex.lock();
@@ -572,16 +552,22 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
         }
 
         printf("mi metto in attesa di ricevere i dati necessari\n");
-        if(offset < it->second.size)
+        if(it->second.startOffset + it->second.available_bytes <= (offset+size))
         {
             engine_mutex.unlock();
-            std::unique_lock<std::mutex> lk(cvm);
-            printf("lock acquisito\n");
-            cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.startOffset + it->second.available_bytes < (offset+size));});
-            engine_mutex.lock();
+            {
+                std::unique_lock<std::mutex> lk(cvm);
+
+                printf("lock acquisito, \n");
+                cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.startOffset + it->second.available_bytes < (offset+size));});
+                printf("wait conclusa\n");
+            }
+                engine_mutex.lock();
+
         }
         else
         {
+
             /*engine_mutex.unlock();
             printf("offset %d, ma size %d\n",offset,it->second.size);
             return -EINVAL;*/
@@ -590,21 +576,21 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 
 
     }
-
+    engine_mutex.unlock();
 
     int fd = ::open(file_cache[path].localname.c_str(),O_RDONLY);
     if (fd < 0 )
     {
         printf("open fallita in read per il file %s\n",file_cache[path].localname.c_str());
-        engine_mutex.unlock();
+        //engine_mutex.unlock();
         return -EIO;
     }
 
     int base = offset-(it->second.startOffset);
     printf("-----offset richiesto: %d, offset della cache: %d,status %d\n",offset, it->second.startOffset,it->second.status);
-    int s = pread(fd,buf,size,base);
+    int s = pread(fd,buf,size,offset);
     close(fd);
-    engine_mutex.unlock();
+    //engine_mutex.unlock();
     return s;
 }
 

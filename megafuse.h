@@ -29,6 +29,7 @@ class MegaFuseCallback : public DemoApp
 
 class MegaFuse : public DemoApp
 {
+    typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
 
     public:
@@ -53,7 +54,7 @@ class MegaFuse : public DemoApp
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuse();
     void check_cache();
-    void eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
+    std::map <std::string,file_cache_row>::iterator eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
     /*callbacks*/
 
     error last_error;

@@ -11,13 +11,17 @@
 file_cache_row::file_cache_row(): td(-1),status(WAIT_D_TOPEN),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0)
 {
     localname = tmpnam(NULL);
-    creat(localname.c_str(),S_IWUSR|S_IRUSR);
+    int fd = open(localname.c_str(),O_CREAT|O_WRONLY,S_IWUSR|S_IRUSR);
+
+    close(fd);
+
+    printf("creato il file %s\n",localname.c_str());
 
 
 }
 file_cache_row::~file_cache_row()
 {
-    unlink(localname.c_str());
+
 }
 
 
@@ -291,10 +295,11 @@ bool MegaFuse::upload(std::string filename,std::string dst)
 
 }
 
-void MegaFuse::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
+std::map <std::string,file_cache_row>::iterator MegaFuse::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
 {
     ::unlink(it->second.localname.c_str());
     it = file_cache.erase(it);
+    return it;
 }
 
 void MegaFuse::check_cache()
@@ -700,5 +705,8 @@ int MegaFuse::open(std::string filename)
 
 MegaFuse::~MegaFuse()
 {
-    file_cache.clear();
+    auto it = file_cache.begin();
+    while(it != file_cache.end())
+        it = eraseCacheRow(it);
+
 }

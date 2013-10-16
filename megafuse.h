@@ -42,12 +42,10 @@ class MegaFuse : public DemoApp
     std::pair<std::string,std::string> splitPath(std::string);
     Node* nodeByPath(std::string path);
     Node* childNodeByName(Node *p,std::string name);
-    int open(std::string);
     public:
     bool start();
     bool stop();
     bool login(std::string username, std::string password);
-    bool download(std::string,std::string dst);
     bool upload(std::string,std::string dst);
     int unlink(std::string);
     std::vector<std::string> ls(std::string path);

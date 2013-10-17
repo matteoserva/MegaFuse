@@ -9,4 +9,4 @@ to run,just
 
 make
 
-./megaclient
+./MegaFuse

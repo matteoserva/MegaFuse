@@ -45,6 +45,7 @@ class MegaFuse : public DemoApp
     public:
     bool start();
     bool stop();
+	int enqueueDownload(std::string filename,int startOffset);
     bool login(std::string username, std::string password);
     bool upload(std::string,std::string dst);
     int unlink(std::string);

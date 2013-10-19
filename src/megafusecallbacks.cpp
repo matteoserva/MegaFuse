@@ -239,7 +239,9 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
     if(it == file_cache.end())
     {
-        printf("upload update\n");
+		cout << '\r'<<"UPLOAD TD " << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" ;
+
+        fflush(stdout);
         return;
     }
     if(time(NULL) - last >= 1)

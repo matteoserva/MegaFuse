@@ -89,27 +89,7 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
     return 0;
 }
 
-std::vector<std::string> MegaFuse::ls(std::string path)
-{
-    /*std::cout << path <<std::endl;
-       engine_mutex.lock();
 
-    Node* n = nodeByPath(path);
-    if(!n)
-    {
-        engine_mutex.unlock();
-        return std::vector<std::string>();
-    }
-
-    std::vector<std::string> l;
-    if(n->type == FOLDERNODE || n->type == ROOTNODE)
-    	{
-            for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
-            l.push_back( (*it)->displayname());
-    	}
-    engine_mutex.unlock();
-    return l;*/
-}
 
 int MegaFuse::rename(const char * src, const char *dst)
 {
@@ -348,9 +328,9 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
-    if(fi->flags &(O_WRONLY | O_RDWR | O_TRUNC))
+	printf("flags:%X\n",fi->flags);
+    if((fi->flags & O_WRONLY) || (fi->flags & (O_RDWR | O_TRUNC)))
         return create(p,O_RDWR,fi);
-    printf("flags: %x\n\n",fi->flags);
     std::lock_guard<std::mutex>lock(api_mutex);
     std::string path(p);
 
@@ -533,7 +513,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
     }
 
     int base = offset-(it->second.startOffset);
-    printf("-----offset richiesto: %d, offset della cache: %d,status %d\n",offset, it->second.startOffset,it->second.status);
+    printf("-----offset richiesto: %d, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
     int s = pread(fd,buf,size,offset);
     close(fd);
     //engine_mutex.unlock();

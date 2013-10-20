@@ -457,7 +457,7 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 }
 
 
-
+#define BYTESMISSING (it->second.available_bytes>=it->second.size)?0:(int(offset+size) - it->second.available_bytes)
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 
@@ -474,7 +474,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 		} else {
 
 			printf("--------------read too slow, downloading the requested chunk\n");
-			int startOffset = (16*1024)* (offset / (16*1024));
+			int startOffset = (128*1024)* (offset / (128*1024));
 			engine_mutex.unlock();
 			int opend_ret = enqueueDownload(path,startOffset);
 			engine_mutex.lock();
@@ -483,21 +483,24 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 		}
 
 		printf("mi metto in attesa di ricevere i dati necessari\n");
+		engine_mutex.unlock();
 		if(it->second.available_bytes < (offset+size)) {
-			engine_mutex.unlock();
+			
 			{
 				std::unique_lock<std::mutex> lk(cvm);
 
 				printf("lock acquisito, \n");
-				cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && it->second.available_bytes < (offset+size));});
+				cv.wait(lk, [this,it,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && BYTESMISSING > 0);});
 				printf("wait conclusa\n");
 			}
-			engine_mutex.lock();
-
+			
 		}
 
 	}
+	else
+	{
 	engine_mutex.unlock();
+	}
 
 	int fd = ::open(file_cache[path].localname.c_str(),O_RDONLY);
 	if (fd < 0 ) {
@@ -513,6 +516,8 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 	//engine_mutex.unlock();
 	return s;
 }
+#undef BYTESMISSING
+
 
 int MegaFuse::mkdir(const char * p, mode_t mode)
 {

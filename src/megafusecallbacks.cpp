@@ -212,8 +212,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
     }
     else
     {
-            printf("----------------download reissued for %s\n",it->first.c_str());
-
+			printf("----------------download reissued for %s\n",it->first.c_str());
             Node*n = nodeByPath(it->first);
             int td = client->topen(n->nodehandle, NULL, 0,-1, 1);
             if(td < 0)
@@ -244,6 +243,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
         fflush(stdout);
         return;
     }
+
     if(time(NULL) - last >= 1)
         {
             cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
@@ -259,9 +259,10 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
         it->second.available_bytes = st.st_size;
     }
     cv.notify_all();
+	std::this_thread::yield();
 
     //WORKAROUND
-    if(it->second.startOffset && (it->second.startOffset+bytes)>size)
+    if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size)
        transfer_complete(td,NULL,NULL);
 }
 

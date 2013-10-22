@@ -287,9 +287,10 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 {
 	int ret = 0;
 	std::lock_guard<std::mutex>lock(api_mutex);
+	auto it = file_cache.begin();
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
-		auto it = file_cache.find(std::string(path));
+		it = file_cache.find(std::string(path));
 		it->second.n_clients--;
 		printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 		if(!it->second.n_clients && it->second.modified) {
@@ -305,7 +306,14 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 
 
 	}
-	check_cache();
+	
+	{
+		std::unique_lock<std::mutex> lk(cvm);
+		cv.wait(lk, [this,it] {return it->second.status ==file_cache_row::UPLOADING;});
+	}
+	
+	
+	//check_cache();
 	return ret;
 }
 

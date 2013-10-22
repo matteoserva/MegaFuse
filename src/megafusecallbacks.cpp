@@ -345,12 +345,20 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
     cv.notify_all();
 	std::this_thread::yield();
 
+	if( it->second.n_clients<=0) {
+			client->tclose(it->second.td);
+			it->second.status =file_cache_row::INVALID;
+			it->second.td = -1;
+	}
+	
     //WORKAROUND
     if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size)
 	{
 		
 		transfer_complete(td,NULL,NULL);
 	}
+	
+	
        
 }
 

@@ -292,26 +292,20 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 		std::lock_guard<std::mutex>lock(engine_mutex);
 		it = file_cache.find(std::string(path));
 		it->second.n_clients--;
-		printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 		if(!it->second.n_clients && it->second.modified) {
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
 			client->putq.push_back(new AppFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str()));
 			it->second.status = file_cache_row::UPLOADING;
 		}
-		if( !it->second.n_clients && it->second.status ==file_cache_row::DOWNLOADING) {
-			client->tclose(it->second.td);
-			eraseCacheRow(it);
-		}
-
-
 	}
 	
 	{
 		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this,it] {return it->second.status ==file_cache_row::UPLOADING;});
+		cv.wait(lk, [this,it] {return it->second.status !=file_cache_row::UPLOADING;});
 	}
-	
+	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
+
 	
 	//check_cache();
 	return ret;
@@ -407,7 +401,7 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
 		if(file_cache.find(path) != file_cache.end()) {
 			auto it = file_cache.find(std::string(p));
-			if(it->second.last_modified == n->mtime) {
+			if(it->second.last_modified == n->mtime && it->second.status != file_cache_row::INVALID) {
 				it->second.n_clients++;
 				return 0;
 			} else if(!it->second.n_clients) {
@@ -486,7 +480,7 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 #define BYTESMISSING (it->second.available_bytes>=it->second.size)?0:(int(offset+size) - it->second.available_bytes)
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-
+	printf("read richiesto, offset %d, size %d\n",offset,size);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	engine_mutex.lock();
 

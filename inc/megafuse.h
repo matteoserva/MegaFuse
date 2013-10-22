@@ -6,8 +6,9 @@
 
 struct file_cache_row
 {
-    enum CacheStatus{WAIT_D_TOPEN,DOWNLOADING,UPLOADING,AVAILABLE};
+    enum CacheStatus{INVALID,DOWNLOADING,UPLOADING,AVAILABLE};
     std::string localname;
+	std::string tmpname;
     int td;
     CacheStatus status;
     int size;
@@ -16,6 +17,8 @@ struct file_cache_row
     time_t last_modified;
     int startOffset;
     bool modified;
+	std::vector<bool> availableChunks;
+	
     file_cache_row();
     ~file_cache_row();
 };
@@ -29,6 +32,7 @@ class MegaFuseCallback : public DemoApp
 
 class MegaFuse : public DemoApp
 {
+	static const int CHUNKSIZE = 128*1024;
     typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
 
@@ -42,6 +46,7 @@ class MegaFuse : public DemoApp
     std::pair<std::string,std::string> splitPath(std::string);
     Node* nodeByPath(std::string path);
     Node* childNodeByName(Node *p,std::string name);
+	bool chunksAvailable(std::string filename,int startOffset,int size);
     public:
     bool start();
     bool stop();

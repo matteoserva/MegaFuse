@@ -156,17 +156,29 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
 
     std::string remotename = "";
     std::string tmp;
-    for(auto it = file_cache.cbegin();it!=file_cache.cend();++it)
-        if(it->second.status == file_cache_row::WAIT_D_TOPEN && it->second.td == td)
+    for(auto it = file_cache.begin();it!=file_cache.end();++it)
+        if(it->second.td == td)
             {
                 remotename = it->first;
-                tmp = it->second.localname;
+                tmp = it->second.tmpname;
+				int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
+				if(fdt >= 0)
+					close(fdt);
+				if(it->second.status == file_cache_row::INVALID)
+				{
+					
+					it->second.availableChunks.clear();
+					int numChunks = ceil(float(it->second.size) / CHUNKSIZE );
+					printf("tmpfile creato con %d blocchi\n",numChunks);
+					it->second.availableChunks.resize(numChunks,false);
+					
+					
+				}
             }
         chmod(tmp.c_str(),S_IWUSR|S_IRUSR);
     client->dlopen(td,tmp.c_str());
     printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
     file_cache[remotename].status = file_cache_row::DOWNLOADING;
-    file_cache[remotename].localname = tmp;
     file_cache[remotename].available_bytes = 0;
     {
         std::lock_guard<std::mutex> lk(cvm);
@@ -177,7 +189,16 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
 
 void MegaFuse::transfer_failed(int td, string& filename, error e)
 {
+	
     printf("download fallito: %d\n",e);
+	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	client->tclose(td);
+	it->second.td = -1;
+	{
+            std::lock_guard<std::mutex> lk(cvm);
+            it->second.status = file_cache_row::INVALID;
+	}
+	cv.notify_all();
     //DemoApp::transfer_failed(td,filename,e);
     last_error=e;
     //download_lock.unlock();
@@ -198,7 +219,12 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
     client->tclose(it->second.td);
     it->second.td = -1;
 
-    if(it->second.startOffset == 0)
+	bool complete = true;
+	for (bool i : it->second.availableChunks )
+	{
+		complete = complete && i;
+	}
+    if(complete)
     {
         std::string remotename = it->first;
         {
@@ -212,14 +238,36 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
     }
     else
     {
-			printf("----------------download reissued for %s\n",it->first.c_str());
+			
+			int startBlock = 0;
+			for(int i = 0; i < it->second.availableChunks.size();i++)
+			{
+				if(!it->second.availableChunks.at(i))
+				{
+					startBlock = i;
+					break;
+				}
+			}
+			int neededBytes = -1;
+			for(int i = startBlock; i < it->second.availableChunks.size();i++)
+			{
+				if(it->second.availableChunks.at(i))
+				{
+					neededBytes = CHUNKSIZE * (8+i-startBlock);
+					break;
+				}
+			}
+			int startOffset = startBlock * CHUNKSIZE;
+			if(startOffset +neededBytes > it->second.size)
+				neededBytes = -1;
+			printf("------download reissued, missing %d bytes starting from block %d\n",neededBytes,startBlock);
             Node*n = nodeByPath(it->first);
-            int td = client->topen(n->nodehandle, NULL, 0,-1, 1);
+            int td = client->topen(n->nodehandle, NULL, startOffset,neededBytes, 1);
             if(td < 0)
                 return;
             it->second.td = td;
-            it->second.startOffset = 0;
-            it->second.status = file_cache_row::WAIT_D_TOPEN;
+            it->second.startOffset = startOffset;
+            //it->second.status = file_cache_row::INVALID;
             it->second.available_bytes=0;
 
     }
@@ -245,25 +293,65 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
     }
 
     if(time(NULL) - last >= 1)
-        {
-            cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
+	{
+		cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
         cout << "scaricato fino al byte " <<(it->second.startOffset+bytes) << " di: "<<size<<endl;
         last = time(NULL);
-        }
+	}
+
+	int startChunk = it->second.startOffset / CHUNKSIZE;
+	
 
     {
         std::lock_guard<std::mutex> lk(cvm);
         struct stat st;
-        stat(it->second.localname.c_str(),&st);
+        stat(it->second.tmpname.c_str(),&st);
 
         it->second.available_bytes = st.st_size;
     }
+	
+	int endChunk = it->second.available_bytes / CHUNKSIZE;
+	if(it->second.available_bytes == size)
+		endChunk = ceil(float(it->second.available_bytes) / CHUNKSIZE);
+	//printf("disponibili %d byte su %d, endChunk=%d\n",it->second.available_bytes,size,endChunk);
+	for(int i = startChunk;i < endChunk;i++)
+	{
+		try
+		{
+		if(!it->second.availableChunks.at( i))
+		{
+			it->second.availableChunks.at(i) = true;
+			printf("blocco %d salvato\n",i);
+			void *buf = malloc(CHUNKSIZE);
+			int fd;
+			fd = ::open(it->second.tmpname.c_str(),O_RDONLY);
+			int s = pread(fd,buf,CHUNKSIZE,i*CHUNKSIZE);
+			close(fd);
+			fd = ::open(it->second.localname.c_str(),O_WRONLY);
+			pwrite(fd,buf,s,i*CHUNKSIZE);
+			close(fd);
+			free(buf);
+			
+			
+		}
+		}
+		catch(...)
+		{
+			printf("errore, ho provato a leggere il blocco %d\n",i);
+			abort();
+		}
+	}
+	
     cv.notify_all();
 	std::this_thread::yield();
 
     //WORKAROUND
     if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size)
-       transfer_complete(td,NULL,NULL);
+	{
+		
+		transfer_complete(td,NULL,NULL);
+	}
+       
 }
 
 void MegaFuse::login_result(error e)

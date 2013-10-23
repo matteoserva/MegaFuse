@@ -7,6 +7,5 @@ please edit your config file "megafuse.conf" before running.
 
 to run,just
 
-make
-
-./MegaFuse
+	make
+	./Debug/MegaFuse

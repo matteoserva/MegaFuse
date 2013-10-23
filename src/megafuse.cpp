@@ -8,6 +8,11 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+void MegaFuseFilePut::start()
+{
+    AppFilePut::start();
+}
+
 file_cache_row::file_cache_row(): td(-1),status(INVALID),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0)
 {
 	localname = tmpnam(NULL);
@@ -24,7 +29,6 @@ file_cache_row::~file_cache_row()
 {
 
 }
-
 
 void MegaFuse::event_loop(MegaFuse* that)
 {
@@ -283,6 +287,7 @@ void MegaFuse::check_cache()
 void createthumbnail(const char* filename, unsigned size, string* result);
 
 
+
 int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 {
 	int ret = 0;
@@ -295,18 +300,19 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 		if(!it->second.n_clients && it->second.modified) {
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
-			client->putq.push_back(new AppFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str()));
+			client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
 			it->second.status = file_cache_row::UPLOADING;
 		}
 	}
-	
+
+	if(it->second.status ==file_cache_row::UPLOADING)
 	{
 		std::unique_lock<std::mutex> lk(cvm);
 		cv.wait(lk, [this,it] {return it->second.status !=file_cache_row::UPLOADING;});
 	}
 	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 
-	
+
 	//check_cache();
 	return ret;
 }
@@ -323,7 +329,7 @@ bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
 	{
 		available = available && it->second.availableChunks.at(i);
 	}
-	return available;	
+	return available;
 }
 
 
@@ -336,12 +342,12 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 		n = nodeByPath(remotename.c_str());
 		if(!n)
 			return -ENOENT;
-	
+
 
 		{
 			auto it = file_cache.find(remotename);
 			if(it != file_cache.end() && it->second.td >= 0) {
-				
+
 				if(it->second.status == file_cache_row::DOWNLOADING)
 				{
 					client->tclose(it->second.td);
@@ -355,7 +361,7 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 			}
 		}
 
-	
+
 
 		opend_ret=0;
 		int td = client->topen(n->nodehandle, NULL, startOffset,-1, 1);
@@ -439,7 +445,7 @@ int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
 	if(it != file_cache.end()) {
 		it->second.n_clients++;
 		if(it->second.status == file_cache_row::DOWNLOADING)
-			client->tclose(it->second.td); 
+			client->tclose(it->second.td);
 		it->second.size = 0;
 		it->second.status = file_cache_row::AVAILABLE;
 		printf("tronco a 0 il file %s\n",it->second.localname.c_str());
@@ -505,7 +511,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 		printf("mi metto in attesa di ricevere i dati necessari\n");
 		engine_mutex.unlock();
 		if(!chunksAvailable(path,offset,size)) {
-			
+
 			{
 				std::unique_lock<std::mutex> lk(cvm);
 
@@ -513,7 +519,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 				cv.wait(lk, [this,it,path,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size));});
 				printf("wait conclusa\n");
 			}
-			
+
 		}
 
 	}

@@ -4,6 +4,13 @@
 #include <fuse.h>
 #include <condition_variable>
 
+struct MegaFuseFilePut : public AppFilePut
+{
+	void start();
+    std::string remotename;
+	MegaFuseFilePut(const char* fn, handle tn, const char* tu, const char* nn,std::string rn) : AppFilePut(fn,tn,tu,nn) { remotename = rn;}
+};
+
 struct file_cache_row
 {
     enum CacheStatus{INVALID,DOWNLOADING,UPLOADING,AVAILABLE};
@@ -18,7 +25,7 @@ struct file_cache_row
     int startOffset;
     bool modified;
 	std::vector<bool> availableChunks;
-	
+
     file_cache_row();
     ~file_cache_row();
 };

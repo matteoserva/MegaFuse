@@ -69,18 +69,12 @@ void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, c
 
 		client->makeattr(key,&newnode->attrstring,putf->filename.c_str());
 
-        {
+        MegaFuseFilePut* fp = dynamic_cast<MegaFuseFilePut* >(putf);
 
-            Node *p = client->nodebyhandle(putf->target);
-            for (node_list::iterator it = p->children.begin(); it != p->children.end(); it++)
-            {
-                if (!strcmp(putf->newname.c_str(),(*it)->displayname()))
-                {
-                    client->unlink(*it);
-                    break;
-                }
-            }
-        }
+        Node *toBeDeleted = nodeByPath(fp->remotename);
+        if(toBeDeleted)
+            client->unlink(toBeDeleted);
+
 
 		if (putf->targetuser.size())
 		{
@@ -89,13 +83,13 @@ void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, c
 		}
 		else client->putnodes(putf->target,newnode,1);
 
+        auto it = file_cache.find(fp->remotename);
+        {
+            std::lock_guard<std::mutex> lk(cvm);
+            it->second.status = file_cache_row::AVAILABLE;
+        }
+        cv.notify_all();
 
-
-        auto it = file_cache.end();
-            for(auto i = file_cache.begin();i!=file_cache.end();i++)
-                if(i->second.localname == putf->filename)
-                    it = i;
-        it->second.status = file_cache_row::AVAILABLE;
         it->second.td = -1;
         it->second.modified = false;
 
@@ -166,13 +160,13 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
 					close(fdt);
 				if(it->second.status == file_cache_row::INVALID)
 				{
-					
+
 					it->second.availableChunks.clear();
 					int numChunks = ceil(float(it->second.size) / CHUNKSIZE );
 					printf("tmpfile creato con %d blocchi\n",numChunks);
 					it->second.availableChunks.resize(numChunks,false);
-					
-					
+
+
 				}
             }
         chmod(tmp.c_str(),S_IWUSR|S_IRUSR);
@@ -189,7 +183,7 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
 
 void MegaFuse::transfer_failed(int td, string& filename, error e)
 {
-	
+
     printf("download fallito: %d\n",e);
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
 	client->tclose(td);
@@ -238,7 +232,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
     }
     else
     {
-			
+
 			int startBlock = 0;
 			for(int i = 0; i < it->second.availableChunks.size();i++)
 			{
@@ -300,7 +294,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 	}
 
 	int startChunk = it->second.startOffset / CHUNKSIZE;
-	
+
 
     {
         std::lock_guard<std::mutex> lk(cvm);
@@ -309,7 +303,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 
         it->second.available_bytes = st.st_size;
     }
-	
+
 	int endChunk = it->second.available_bytes / CHUNKSIZE;
 	if(it->second.available_bytes == size)
 		endChunk = ceil(float(it->second.available_bytes) / CHUNKSIZE);
@@ -331,8 +325,8 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 			pwrite(fd,buf,s,i*CHUNKSIZE);
 			close(fd);
 			free(buf);
-			
-			
+
+
 		}
 		}
 		catch(...)
@@ -341,7 +335,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 			abort();
 		}
 	}
-	
+
     cv.notify_all();
 	std::this_thread::yield();
 
@@ -350,16 +344,16 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 			it->second.status =file_cache_row::INVALID;
 			it->second.td = -1;
 	}
-	
+
     //WORKAROUND
     if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size)
 	{
-		
+
 		transfer_complete(td,NULL,NULL);
 	}
-	
-	
-       
+
+
+
 }
 
 void MegaFuse::login_result(error e)

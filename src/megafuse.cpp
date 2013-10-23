@@ -390,7 +390,7 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
 	printf("flags:%X\n",fi->flags);
-	if((fi->flags & O_WRONLY) || (fi->flags & (O_RDWR | O_TRUNC)))
+	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
 		return create(p,O_RDWR,fi);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);

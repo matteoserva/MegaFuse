@@ -6,7 +6,7 @@
 ProjectName            :=MegaFuse
 ConfigurationName      :=Debug
 WorkspacePath          := "/home/matteo/Progetti/CodeLite"
-ProjectPath            := "/home/matteo/Progetti/MegaFuse"
+ProjectPath            := "."
 IntermediateDirectory  :=./Debug
 OutDir                 := $(IntermediateDirectory)
 CurrentFileName        :=
@@ -87,7 +87,7 @@ PreBuild:
 ## Objects
 ##
 $(IntermediateDirectory)/src_megacrypto$(ObjectSuffix): src/megacrypto.cpp $(IntermediateDirectory)/src_megacrypto$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megacrypto.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megacrypto$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megacrypto.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megacrypto$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megacrypto$(DependSuffix): src/megacrypto.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megacrypto$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megacrypto$(DependSuffix) -MM "src/megacrypto.cpp"
 
@@ -95,7 +95,7 @@ $(IntermediateDirectory)/src_megacrypto$(PreprocessSuffix): src/megacrypto.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megacrypto$(PreprocessSuffix) "src/megacrypto.cpp"
 
 $(IntermediateDirectory)/src_megafusecallbacks$(ObjectSuffix): src/megafusecallbacks.cpp $(IntermediateDirectory)/src_megafusecallbacks$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megafusecallbacks.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megafusecallbacks$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megafusecallbacks.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megafusecallbacks$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megafusecallbacks$(DependSuffix): src/megafusecallbacks.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megafusecallbacks$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megafusecallbacks$(DependSuffix) -MM "src/megafusecallbacks.cpp"
 
@@ -103,7 +103,7 @@ $(IntermediateDirectory)/src_megafusecallbacks$(PreprocessSuffix): src/megafusec
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megafusecallbacks$(PreprocessSuffix) "src/megafusecallbacks.cpp"
 
 $(IntermediateDirectory)/src_fuseFileCache$(ObjectSuffix): src/fuseFileCache.cpp $(IntermediateDirectory)/src_fuseFileCache$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/fuseFileCache.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuseFileCache$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/fuseFileCache.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuseFileCache$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_fuseFileCache$(DependSuffix): src/fuseFileCache.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_fuseFileCache$(ObjectSuffix) -MF$(IntermediateDirectory)/src_fuseFileCache$(DependSuffix) -MM "src/fuseFileCache.cpp"
 
@@ -111,7 +111,7 @@ $(IntermediateDirectory)/src_fuseFileCache$(PreprocessSuffix): src/fuseFileCache
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_fuseFileCache$(PreprocessSuffix) "src/fuseFileCache.cpp"
 
 $(IntermediateDirectory)/src_megaposix$(ObjectSuffix): src/megaposix.cpp $(IntermediateDirectory)/src_megaposix$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megaposix.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megaposix$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megaposix.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megaposix$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megaposix$(DependSuffix): src/megaposix.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megaposix$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megaposix$(DependSuffix) -MM "src/megaposix.cpp"
 
@@ -119,7 +119,7 @@ $(IntermediateDirectory)/src_megaposix$(PreprocessSuffix): src/megaposix.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megaposix$(PreprocessSuffix) "src/megaposix.cpp"
 
 $(IntermediateDirectory)/src_fuseImpl$(ObjectSuffix): src/fuseImpl.cpp $(IntermediateDirectory)/src_fuseImpl$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/fuseImpl.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuseImpl$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/fuseImpl.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuseImpl$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_fuseImpl$(DependSuffix): src/fuseImpl.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_fuseImpl$(ObjectSuffix) -MF$(IntermediateDirectory)/src_fuseImpl$(DependSuffix) -MM "src/fuseImpl.cpp"
 
@@ -127,7 +127,7 @@ $(IntermediateDirectory)/src_fuseImpl$(PreprocessSuffix): src/fuseImpl.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_fuseImpl$(PreprocessSuffix) "src/fuseImpl.cpp"
 
 $(IntermediateDirectory)/src_fuse$(ObjectSuffix): src/fuse.c $(IntermediateDirectory)/src_fuse$(DependSuffix)
-	$(CC) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/fuse.c" $(CFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuse$(ObjectSuffix) $(IncludePath)
+	$(CC) $(SourceSwitch) "./src/fuse.c" $(CFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_fuse$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_fuse$(DependSuffix): src/fuse.c
 	@$(CC) $(CFLAGS) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_fuse$(ObjectSuffix) -MF$(IntermediateDirectory)/src_fuse$(DependSuffix) -MM "src/fuse.c"
 
@@ -135,7 +135,7 @@ $(IntermediateDirectory)/src_fuse$(PreprocessSuffix): src/fuse.c
 	@$(CC) $(CFLAGS) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_fuse$(PreprocessSuffix) "src/fuse.c"
 
 $(IntermediateDirectory)/src_megacli$(ObjectSuffix): src/megacli.cpp $(IntermediateDirectory)/src_megacli$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megacli.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megacli$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megacli.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megacli$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megacli$(DependSuffix): src/megacli.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megacli$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megacli$(DependSuffix) -MM "src/megacli.cpp"
 
@@ -143,7 +143,7 @@ $(IntermediateDirectory)/src_megacli$(PreprocessSuffix): src/megacli.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megacli$(PreprocessSuffix) "src/megacli.cpp"
 
 $(IntermediateDirectory)/src_megabdb$(ObjectSuffix): src/megabdb.cpp $(IntermediateDirectory)/src_megabdb$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megabdb.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megabdb$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megabdb.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megabdb$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megabdb$(DependSuffix): src/megabdb.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megabdb$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megabdb$(DependSuffix) -MM "src/megabdb.cpp"
 
@@ -151,7 +151,7 @@ $(IntermediateDirectory)/src_megabdb$(PreprocessSuffix): src/megabdb.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megabdb$(PreprocessSuffix) "src/megabdb.cpp"
 
 $(IntermediateDirectory)/src_megaclient$(ObjectSuffix): src/megaclient.cpp $(IntermediateDirectory)/src_megaclient$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megaclient.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megaclient$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megaclient.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megaclient$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megaclient$(DependSuffix): src/megaclient.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megaclient$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megaclient$(DependSuffix) -MM "src/megaclient.cpp"
 
@@ -159,7 +159,7 @@ $(IntermediateDirectory)/src_megaclient$(PreprocessSuffix): src/megaclient.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megaclient$(PreprocessSuffix) "src/megaclient.cpp"
 
 $(IntermediateDirectory)/src_megafuse$(ObjectSuffix): src/megafuse.cpp $(IntermediateDirectory)/src_megafuse$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/megafuse.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megafuse$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/megafuse.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_megafuse$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_megafuse$(DependSuffix): src/megafuse.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_megafuse$(ObjectSuffix) -MF$(IntermediateDirectory)/src_megafuse$(DependSuffix) -MM "src/megafuse.cpp"
 
@@ -167,7 +167,7 @@ $(IntermediateDirectory)/src_megafuse$(PreprocessSuffix): src/megafuse.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/src_megafuse$(PreprocessSuffix) "src/megafuse.cpp"
 
 $(IntermediateDirectory)/src_Config$(ObjectSuffix): src/Config.cpp $(IntermediateDirectory)/src_Config$(DependSuffix)
-	$(CXX) $(IncludePCH) $(SourceSwitch) "/home/matteo/Progetti/MegaFuse/src/Config.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_Config$(ObjectSuffix) $(IncludePath)
+	$(CXX) $(IncludePCH) $(SourceSwitch) "./src/Config.cpp" $(CXXFLAGS) $(ObjectSwitch)$(IntermediateDirectory)/src_Config$(ObjectSuffix) $(IncludePath)
 $(IntermediateDirectory)/src_Config$(DependSuffix): src/Config.cpp
 	@$(CXX) $(CXXFLAGS) $(IncludePCH) $(IncludePath) -MG -MP -MT$(IntermediateDirectory)/src_Config$(ObjectSuffix) -MF$(IntermediateDirectory)/src_Config$(DependSuffix) -MM "src/Config.cpp"
 

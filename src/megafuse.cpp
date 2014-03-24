@@ -488,28 +488,27 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 {
 	printf("read richiesto, offset %d, size %d\n",offset,size);
 	std::lock_guard<std::mutex>lock(api_mutex);
+
 	engine_mutex.lock();
 
 	printf("apro cache: %s\n",file_cache[path].localname.c_str());
 	auto it = file_cache.find(path);
+    bool dataReady = it->second.status != file_cache_row::DOWNLOADING || chunksAvailable(path,offset,size);
+    bool canWait = ((offset+size) - (it->second.available_bytes)) < 1024*1024 && it->second.startOffset <= offset;
+    engine_mutex.unlock();
 
-	if(it->second.status == file_cache_row::DOWNLOADING) {
-		int bytesmissing = (offset+size) - (it->second.available_bytes);
-		if(chunksAvailable(path,offset,size) || (bytesmissing <1024*1024 && it->second.startOffset <= offset)) {
-
-		} else {
-
-			printf("--------------read too slow, downloading the requested chunk\n");
+    if(!dataReady)
+	{
+        if(!canWait)
+        {
+            printf("--------------read too slow, downloading the requested chunk\n");
 			int startOffset = (CHUNKSIZE)* (offset / (CHUNKSIZE));
-			engine_mutex.unlock();
 			int opend_ret = enqueueDownload(path,startOffset);
-			engine_mutex.lock();
 			if(opend_ret < 0)
 				return opend_ret;
-		}
+        }
 
-		printf("mi metto in attesa di ricevere i dati necessari\n");
-		engine_mutex.unlock();
+        printf("mi metto in attesa di ricevere i dati necessari\n");
 		if(!chunksAvailable(path,offset,size)) {
 
 			{
@@ -523,10 +522,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 		}
 
 	}
-	else
-	{
-	engine_mutex.unlock();
-	}
+
 
 	int fd = ::open(file_cache[path].localname.c_str(),O_RDONLY);
 	if (fd < 0 ) {
@@ -535,7 +531,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 		return -EIO;
 	}
 
-	int base = offset-(it->second.startOffset);
+	//int base = offset-(it->second.startOffset);
 	printf("-----offset richiesto: %d, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
 	int s = pread(fd,buf,size,offset);
 	close(fd);

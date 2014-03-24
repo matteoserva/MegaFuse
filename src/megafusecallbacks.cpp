@@ -206,6 +206,10 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(in
     return file_cache.end();
 }
 
+
+/*
+  macs and fn must be ignored.
+*/
 void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
@@ -308,6 +312,8 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 	if(it->second.available_bytes == size)
 		endChunk = ceil(float(it->second.available_bytes) / CHUNKSIZE);
 	//printf("disponibili %d byte su %d, endChunk=%d\n",it->second.available_bytes,size,endChunk);
+
+	bool shouldStop = false;
 	for(int i = startChunk;i < endChunk;i++)
 	{
 		try
@@ -328,6 +334,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 
 
 		}
+
 		}
 		catch(...)
 		{
@@ -346,10 +353,16 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 	}
 
     //WORKAROUND
+
     if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size)
 	{
 
 		transfer_complete(td,NULL,NULL);
+	}
+	else if(endChunk > startChunk && it->second.availableChunks.at( endChunk))
+	{
+        printf("----Downloading already available data at block %d. stopping...\n",endChunk);
+        transfer_complete(td,NULL,NULL);
 	}
 
 

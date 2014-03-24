@@ -14,7 +14,7 @@
         std::string PASSWORD;
         std::string APPKEY;
         std::string MOUNTPOINT;
-
+		int fuseindex;
         private:
         Config();
         std::string configFile;

@@ -30,7 +30,7 @@ bool Config::parseCommandLine(int argc, char**argv)
 {
     //true if you must stop
     opterr = 0;
-    for (int c; (c = getopt (argc, argv, ":hc:p:")) != -1;)
+    for (int c; (c = getopt (argc, argv, ":hfc:p:")) != -1;)
     {
 
         switch (c)
@@ -39,8 +39,13 @@ bool Config::parseCommandLine(int argc, char**argv)
             configFile=optarg;
             cout <<"ss "<<configFile<<endl;
             break;
+		case 'f':
+            fuseindex = optind;
+            return false;
+            break;
         case 'h':
             cout<<"-c configfile    for the config file"<<endl;
+			cout<<"-f args          arguments passed to the fuse module"<<endl;
             cout<<"-h               help "<<endl;
             return true;
         case '?':
@@ -116,7 +121,7 @@ void Config::LoadConfig()
 
 }
 
-Config::Config():configFile("megafuse.conf")
+Config::Config():configFile("megafuse.conf"),fuseindex(-1)
 {
 
 }

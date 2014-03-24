@@ -417,6 +417,8 @@ int main(int argc, char **argv)
 	// instantiate app components: the callback processor (DemoApp),
 	// the cURL HTTP I/O engine (CurlHttpIO) and the MegaClient itself
 	bool stop = Config::getInstance()->parseCommandLine(argc, argv);
+	
+	
 	if(stop)
         exit(0);
 	Config::getInstance()->LoadConfig();
@@ -445,7 +447,24 @@ int main(int argc, char **argv)
         //usleep(500000);
     strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
     arg[2] = mountpoint;
-	megafuse_mainpp(3,arg,&megaFuse);
+	
+	if(Config::getInstance()->fuseindex > -1)
+	{
+		unsigned int fuseargs = argc + 3 -Config::getInstance()->fuseindex;
+		char* fuseargv[fuseargs];
+		printf("argc %d fuseargs %d\n",argc,fuseargs);
+		
+		fuseargv[0] = "megafuse";
+		fuseargv[1] = "-d";
+		strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
+		fuseargv[2] = mountpoint;
+		for(int i = 0; i < fuseargs -3 ; i++)
+			fuseargv[3+i] = argv[i + Config::getInstance()->fuseindex];
+		megafuse_mainpp(fuseargs,fuseargv,&megaFuse);
+		
+	}
+	else
+		megafuse_mainpp(3,arg,&megaFuse);
 
 
 }

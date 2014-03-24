@@ -15,16 +15,7 @@ static const char *hello_path = "/hello";
 static MegaFuse* megaFuse;
 static FileCache fileCache;
 
-struct file_info
-{
-    std::string remotename;
-    std::string localname;
-    bool modified;
-    bool file_exists;
-    file_info(): modified(false),file_exists(false){};
-};
 
-std::map<uint64_t,file_info> open_files;
 
 extern "C" int hello_write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {

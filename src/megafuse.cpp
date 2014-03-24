@@ -330,8 +330,7 @@ bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
 	bool available = true;
 	for(int i = startChunk;i < endChunk;i++)
 	{
-        printf("controllo chunk %d\n",i);
-		available = available && it->second.availableChunks.at(i);
+		available = available && it->second.availableChunks[i];
 	}
 	return available;
 }

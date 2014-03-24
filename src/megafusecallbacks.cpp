@@ -213,6 +213,8 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(in
 void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
     auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	if(it == file_cache.end())
+		return;
     printf("download complete\n");
     client->tclose(it->second.td);
     it->second.td = -1;
@@ -240,7 +242,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 			int startBlock = 0;
 			for(int i = 0; i < it->second.availableChunks.size();i++)
 			{
-				if(!it->second.availableChunks.at(i))
+				if(!it->second.availableChunks[i])
 				{
 					startBlock = i;
 					break;
@@ -249,7 +251,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 			int neededBytes = -1;
 			for(int i = startBlock; i < it->second.availableChunks.size();i++)
 			{
-				if(it->second.availableChunks.at(i))
+				if(it->second.availableChunks[i])
 				{
 					neededBytes = CHUNKSIZE * (8+i-startBlock);
 					break;
@@ -318,10 +320,9 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 	{
 		try
 		{
-		printf("cerco di salvare il blocco %d\n",i);
-		if(!it->second.availableChunks.at( i))
+		if(!it->second.availableChunks[i])
 		{
-			it->second.availableChunks.at(i) = true;
+			it->second.availableChunks[i] = true;
 			printf("blocco %d salvato\n",i);
 			void *buf = malloc(CHUNKSIZE);
 			int fd;
@@ -361,7 +362,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 
 		transfer_complete(td,NULL,NULL);
 	}
-	else if(endChunk > startChunk && (endChunk > it->second.availableChunks.size() || it->second.availableChunks.at( endChunk)))
+	else if(endChunk > startChunk && (endChunk +1 > it->second.availableChunks.size() || it->second.availableChunks[endChunk]))
 	{
         printf("----Downloading already available data at block %d. stopping...\n",endChunk);
         transfer_complete(td,NULL,NULL);

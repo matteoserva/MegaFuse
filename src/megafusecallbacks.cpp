@@ -318,6 +318,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 	{
 		try
 		{
+		printf("cerco di salvare il blocco %d\n",i);
 		if(!it->second.availableChunks.at( i))
 		{
 			it->second.availableChunks.at(i) = true;
@@ -339,6 +340,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 		catch(...)
 		{
 			printf("errore, ho provato a leggere il blocco %d\n",i);
+			fflush(stdout);
 			abort();
 		}
 	}
@@ -359,7 +361,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 
 		transfer_complete(td,NULL,NULL);
 	}
-	else if(endChunk > startChunk && it->second.availableChunks.at( endChunk))
+	else if(endChunk > startChunk && (endChunk > it->second.availableChunks.size() || it->second.availableChunks.at( endChunk)))
 	{
         printf("----Downloading already available data at block %d. stopping...\n",endChunk);
         transfer_complete(td,NULL,NULL);

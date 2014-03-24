@@ -145,6 +145,7 @@ int MegaFuse::rename(const char * src, const char *dst)
 int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
+
 	printf("getattr chiamato\n");
 	{
 		std::lock_guard<std::mutex>lock2(engine_mutex);
@@ -185,6 +186,8 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 			-EINVAL;
 		}
 	}
+	printf("getattr finito\n");
+
 	return 0;
 
 }
@@ -327,6 +330,7 @@ bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
 	bool available = true;
 	for(int i = startChunk;i < endChunk;i++)
 	{
+        printf("controllo chunk %d\n",i);
 		available = available && it->second.availableChunks.at(i);
 	}
 	return available;

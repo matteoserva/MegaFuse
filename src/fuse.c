@@ -16,8 +16,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
-static const char *hello_str = "Hello World!\n";
-static const char *hello_path = "/hello";
+
 
 int hello_rename(const char * src, const char *dst);
 

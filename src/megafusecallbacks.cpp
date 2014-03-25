@@ -240,7 +240,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
     {
 
 			int startBlock = 0;
-			for(int i = 0; i < it->second.availableChunks.size();i++)
+			for(unsigned int i = 0; i < it->second.availableChunks.size();i++)
 			{
 				if(!it->second.availableChunks[i])
 				{
@@ -249,7 +249,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 				}
 			}
 			int neededBytes = -1;
-			for(int i = startBlock; i < it->second.availableChunks.size();i++)
+			for(unsigned int i = startBlock; i < it->second.availableChunks.size();i++)
 			{
 				if(it->second.availableChunks[i])
 				{

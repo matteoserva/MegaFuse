@@ -55,7 +55,7 @@ bool MegaFuse::login(std::string username, std::string password)
 
 		engine_mutex.lock();
 		client->pw_key(password.c_str(),pwkey);
-		client->login(username.c_str(),pwkey);
+		client->login(username.c_str(),pwkey,1);
 		login_ret=0;
 		engine_mutex.unlock();
 		printf("login: aspetto il risultato\n");
@@ -89,7 +89,7 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 				names.insert((*it)->displayname());
 			}
 	}
-	
+
 	auto p = splitPath(path);
 	std::string p2 = p.first;
 	for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
@@ -100,7 +100,7 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 	}
 	for(auto it =names.begin();it != names.end();++it)
 		filler(buf, it->c_str(), NULL, 0);
-	
+
 	engine_mutex.unlock();
 
 	return 0;
@@ -173,10 +173,10 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 				if(it->first == std::string(path)) {
 					stbuf->st_mode = S_IFREG | 0555;
 					stbuf->st_nlink = 1;
-					
-					struct stat st; 
 
-					
+					struct stat st;
+
+
 					printf("calcolo le dimensioni\n");
 					stbuf->st_size = it->second.size;
 					if (stat(it->second.localname.c_str(), &st) == 0)
@@ -424,16 +424,16 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 	printf("flags:%X\n",fi->flags);
 	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
 	{
-		
+
 		file_cache[p].status = file_cache_row::AVAILABLE;
 		file_cache[p].size=0;
 		file_cache[p].modified=true;
 		file_cache[p].n_clients++;
 		truncate(file_cache[p].localname.c_str(), 0);
 		return 0;
-		
+
 	}
-		
+
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
 
@@ -442,7 +442,7 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
-		
+
 		Node *n = nodeByPath(p);
 
 		if(file_cache.find(path) != file_cache.end()) {
@@ -455,7 +455,7 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 			} else
 				{printf("\n\n\nstatus %d\n\n",it->second.status);return -EAGAIN;}
 		}
-		
+
 		if(!n)
 			return -ENOENT;
 	}
@@ -644,9 +644,9 @@ int MegaFuse::unlink(std::string filename)
 		eraseCacheRow(it);
 		notFoundError = 0;
 	}
-	
-	
-	
+
+
+
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 		Node *n = nodeByPath(filename.c_str());

@@ -23,3 +23,7 @@ after an abnormal termination you might need to clear the cache and the mountpoi
 
 	rm -rf ~/.megaclient
 	umount $MOUNTPOINT
+
+I'm currently accepting donations via paypal at the address of my main project
+
+	http://ygopro.it/web/modules.php?name=Donations&op=make

@@ -409,7 +409,16 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
 	printf("flags:%X\n",fi->flags);
 	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
-		return create(p,O_RDWR,fi);
+	{//NEEDFIX
+		auto r = create(p,O_RDWR,fi);
+		if(r != 0)
+			return r;
+		file_cache[p].status = file_cache_row::AVAILABLE;
+		file_cache[p].size=0;
+		file_cache[p].modified=true;
+		return 0;
+	}
+		
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
 

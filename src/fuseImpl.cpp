@@ -8,12 +8,10 @@
 
 #include "megaclient.h"
 #include "megafuse.h"
-#include "fuseFileCache.h"
-static const char *hello_str = "Hello World!\n";
-static const char *hello_path = "/hello";
+
 
 static MegaFuse* megaFuse;
-static FileCache fileCache;
+
 
 
 
@@ -73,10 +71,42 @@ extern "C" int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler
 	return megaFuse->readdir(path,buf,filler,offset,fi);
 }
 
+int hello_utimens(const char *a, const struct timespec tv[2]){return 0;};
+int hello_chmod(const char *a, mode_t m){return 0;}
+int hello_chown(const char *a, uid_t u, gid_t g){return 0;}
+int hello_truncate(const char *a, off_t o){return 0;}
+
 extern "C" int megafuse_main(int argc,char**argv);
+
+
+
+
+int megafuse_main(int argc,char**argv)
+{
+    return 0;
+
+}
+static struct fuse_operations hello_oper;
+
 int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 {
     megaFuse = mf;
-    return megafuse_main(argc, argv);
+
+	hello_oper.getattr	= hello_getattr;
+	hello_oper.readdir	= hello_readdir;
+	hello_oper.open		= hello_open;
+	hello_oper.read		= hello_read;
+	hello_oper.release    = hello_release;
+	hello_oper.unlink     = hello_unlink;
+	hello_oper.rmdir      = hello_unlink;
+	hello_oper.create     =hello_create;
+	hello_oper.utimens    = hello_utimens;
+	hello_oper.chmod      = hello_chmod;
+	hello_oper.chown      = hello_chown;
+	hello_oper.truncate   = hello_truncate;
+	hello_oper.write      = hello_write;
+	hello_oper.mkdir      = hello_mkdir;
+	hello_oper.rename     =hello_rename;
+    return fuse_main(argc, argv, &hello_oper, NULL);
 
 }

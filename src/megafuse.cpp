@@ -637,21 +637,28 @@ int MegaFuse::mkdir(const char * p, mode_t mode)
 int MegaFuse::unlink(std::string filename)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
-	auto it = file_cache.find(filename);
-	int notFoundError = -ENOENT;
-	if(it != file_cache.end())
-	{
-		eraseCacheRow(it);
-		notFoundError = 0;
-	}
-
-
+	
 
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 		Node *n = nodeByPath(filename.c_str());
+		
+		auto it = file_cache.find(filename);
+		
+		if(!n && it == file_cache.end())
+			return -ENOENT;
+		
+		
+		if(it != file_cache.end())
+		{
+			if(it->second.n_clients > 0)
+				return -EIO;
+			eraseCacheRow(it);
+		}
+		
+		
 		if(!n)
-			return notFoundError;
+			return 0;
 		error e = client->unlink(n);
 		if(e)
 			return -ENOENT;

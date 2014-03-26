@@ -86,6 +86,19 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 		for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
 			filler(buf, (*it)->displayname(), NULL, 0);
 	}
+	
+	auto p = splitPath(path);
+	std::string p2 = p.first;
+	for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
+	{
+		auto namePair = splitPath(it->first);
+		if(namePair.first == std::string(path))
+			filler(buf, namePair.second.c_str(), NULL, 0);
+				
+		
+	}
+	
+	
 	engine_mutex.unlock();
 
 	return 0;
@@ -153,6 +166,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 		std::cout <<"PATH: "<<path<<std::endl;
 		Node *n = nodeByPath(path);
 		if(!n) {
+			printf("file inesistente per mega, cerco in cache\n");
 			for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
 				if(it->first == std::string(path)) {
 					stbuf->st_mode = S_IFREG | 0555;
@@ -162,6 +176,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 					return 0;
 
 				}
+				printf("nemmeno in cache\n");
 			return -ENOENT;
 		}
 		switch (n->type) {
@@ -403,14 +418,12 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
+		
 		Node *n = nodeByPath(p);
-		if(!n)
-			return -ENOENT;
-
 
 		if(file_cache.find(path) != file_cache.end()) {
 			auto it = file_cache.find(std::string(p));
-			if(it->second.last_modified == n->mtime && it->second.status != file_cache_row::INVALID) {
+			if((!n || it->second.last_modified >= n->mtime) && it->second.status != file_cache_row::INVALID) {
 				it->second.n_clients++;
 				return 0;
 			} else if(!it->second.n_clients) {
@@ -418,6 +431,9 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 			} else
 				return -EAGAIN;
 		}
+		
+		if(!n)
+			return -ENOENT;
 	}
 
 	int opend_ret = enqueueDownload(p,0);
@@ -475,7 +491,7 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 	auto it = file_cache.find(path);
 
 	chmod(it->second.localname.c_str(),S_IWUSR|S_IRUSR);
-	printf("write, apro cache: %s\n",it->second.localname.c_str());
+	printf("write, file %s, apro cache: %s\n",it->first.c_str(),it->second.localname.c_str());
 	int fd = ::open(it->second.localname.c_str(),O_WRONLY);
 	if (fd < 0 )
 		return fd;

@@ -1,6 +1,6 @@
 /*
 
-MEGA SDK 2013-10-03 - sample application for the gcc/POSIX environment
+MEGA SDK 2013-10-03 - sample application for the gcc/POSIX environment 
 
 Using cURL for HTTP I/O, GNU Readline for console I/O and FreeImage for thumbnail creation
 
@@ -71,7 +71,7 @@ ssize_t pwrite(int, const void *, size_t, off_t) __DARWIN_ALIAS_C(pwrite);
 #include "megacrypto.h"
 #include "megaclient.h"
 #include "megaposix.h"
-#include "megafuse.h"
+#include "megacli.h"
 #include "megabdb.h"
 
 // HttpIO implementation using libcurl
@@ -231,7 +231,6 @@ void CurlHttpIO::waitio(dstime maxds)
 
 	if (maxfd < fileno(stdin)) maxfd = fileno(stdin);
 
-    maxds = 5;
 	if (maxds+1)
 	{
 		dstime us = 1000000/10*maxds;
@@ -243,8 +242,8 @@ void CurlHttpIO::waitio(dstime maxds)
 	select(maxfd+1,&rfds,&wfds,&efds,maxds+1 ? &tv : NULL);
 
 	// user interaction from stdin?
-	//if (FD_ISSET(fileno(stdin),&rfds)) rl_callback_read_char();
-	//else redisplay = 1;
+	if (FD_ISSET(fileno(stdin),&rfds)) rl_callback_read_char();
+	else redisplay = 1;
 }
 
 // callback for incoming HTTP payload
@@ -402,70 +401,12 @@ void term_echo(int echo)
 		tcsetattr(0,TCSANOW,&new_settings);
 	}
 }
-int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
-
-#include "Config.h"
-
-char *arg[] = {"megafuse","-d","/tmp"};
-char mountpoint[256];
-
-
-
-int main(int argc, char **argv)
+int main()
 {
-	
-	bool stop = Config::getInstance()->parseCommandLine(argc, argv);
-	if(stop)
-        exit(0);
-	Config::getInstance()->LoadConfig();
-	
-	std::string dbpath = string(getenv("HOME")) + "/.megaclient/";
-	mkdir(dbpath.c_str(),0700);
-	chdir(dbpath.c_str());
-	
-	MegaFuse megaFuse;
-	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
+	// instantiate app components: the callback processor (DemoApp),
+	// the cURL HTTP I/O engine (CurlHttpIO) and the MegaClient itself
+	client = new MegaClient(new DemoApp,new CurlHttpIO,new BdbAccess,"SDKSAMPLE");
+
 	megacli();
-	megaFuse.start();
-	if(!megaFuse.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
-    {
-        printf("login failed. exiting...\n");
-        exit(1);
-    }
-    printf("login successful\n");
-    usleep(500000);
-    
-	//megaFuse.enqueueDownload("/megaclient",1024*2048);
-	//usleep(500000);
-	
-	//while(1)
-		//usleep(500000);
-	
-	//megaFuse.open("/megaclient",nullptr);
-
-	//while(true)
-        //usleep(500000);
-    strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
-    arg[2] = mountpoint;
-	
-	if(Config::getInstance()->fuseindex > -1)
-	{
-		unsigned int fuseargs = argc + 3 -Config::getInstance()->fuseindex;
-		char* fuseargv[fuseargs];
-		printf("argc %d fuseargs %d\n",argc,fuseargs);
-		
-		fuseargv[0] = "megafuse";
-		fuseargv[1] = "-d";
-		strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
-		fuseargv[2] = mountpoint;
-		for(int i = 0; i < fuseargs -3 ; i++)
-			fuseargv[3+i] = argv[i + Config::getInstance()->fuseindex];
-		megafuse_mainpp(fuseargs,fuseargv,&megaFuse);
-		
-	}
-	else
-		megafuse_mainpp(3,arg,&megaFuse);
-
-
 }

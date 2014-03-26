@@ -42,9 +42,6 @@ DbTable* BdbAccess::open(string* name)
 	
 	dbdir.append(*name);
 	MegaClient::escapefilename(&dbdir);
-	string dbpath = string(getenv("HOME")) + "/.megaclient/";
-	mkdir(dbpath.c_str(),0700);
-	dbdir = dbpath + dbdir;
 	mkdir(dbdir.c_str(),0700);
 
 	env = new DbEnv(0);

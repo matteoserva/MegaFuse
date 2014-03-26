@@ -642,7 +642,7 @@ int MegaFuse::unlink(std::string filename)
 	if(it != file_cache.end())
 	{
 		eraseCacheRow(it);
-		notFountError = 0;
+		notFoundError = 0;
 	}
 	
 	

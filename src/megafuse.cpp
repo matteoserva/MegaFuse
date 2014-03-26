@@ -357,7 +357,7 @@ bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
 	int startChunk = startOffset/CHUNKSIZE;
 	int endChunk = ceil(float(startOffset+size) / CHUNKSIZE);
 	bool available = true;
-	for(int i = startChunk;i < endChunk;i++)
+	for(int i = startChunk;i < endChunk && i < it->second.availableChunks.size();i++)
 	{
 		available = available && it->second.availableChunks[i];
 	}

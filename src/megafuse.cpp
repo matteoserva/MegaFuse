@@ -124,11 +124,13 @@ int MegaFuse::rename(const char * src, const char *dst)
 			return -EBUSY;
 		
 		
-		if(destCached)
+		/*if(destCached)
 			eraseCacheRow(file_cache.find(dst));
+		*/
 		
 		if(sourceCached)
-		{
+		{   //we have the source file in cache.
+			//create [dst] if needed
 			std::swap(file_cache[dst],file_cache[src]);
 			eraseCacheRow(file_cache.find(src));
 			
@@ -434,18 +436,6 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
 	printf("flags:%X\n",fi->flags);
-	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
-	{
-
-		file_cache[p].status = file_cache_row::AVAILABLE;
-		file_cache[p].size=0;
-		file_cache[p].modified=true;
-		file_cache[p].n_clients++;
-		truncate(file_cache[p].localname.c_str(), 0);
-		return 0;
-
-	}
-
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
 
@@ -454,6 +444,19 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
+
+		if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
+		{
+
+			file_cache[p].status = file_cache_row::AVAILABLE;
+			file_cache[p].size=0;
+			file_cache[p].modified=true;
+			file_cache[p].n_clients++;
+			truncate(file_cache[p].localname.c_str(), 0);
+			return 0;
+
+		}
+
 
 		Node *n = nodeByPath(p);
 

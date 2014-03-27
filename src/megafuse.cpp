@@ -113,41 +113,53 @@ int MegaFuse::rename(const char * src, const char *dst)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	{
 		std::lock_guard<std::mutex>lock2(engine_mutex);
+		
+		//now we handle caches.
+		bool sourceCached = file_cache.find(src) != file_cache.end(); 
+		bool destCached = file_cache.find(dst) != file_cache.end(); 
+		
+		if(sourceCached && file_cache[src].n_clients > 0)
+			return -EBUSY;
+		if(destCached && file_cache[dst].n_clients > 0)
+			return -EBUSY;
+		
+		
+		if(destCached)
+			eraseCacheRow(file_cache.find(dst));
+		
+		if(sourceCached)
+		{
+			std::swap(file_cache[dst],file_cache[src]);
+			eraseCacheRow(file_cache.find(src));
+			
+			
+		}
+		
+		
+		
 		Node *n_src = nodeByPath(src);
 		if(!n_src)
 			return -1;
 		Node *n_dst = nodeByPath(dst);
-		if(!n_dst) {
-			auto path = splitPath(dst);
-			n_dst = nodeByPath(path.first);
-			if(!n_dst)
+		auto path = splitPath(dst);
+		Node *dstFolder = nodeByPath(path.first);
+		
+		if(!dstFolder)
 				return -2;
 
-			if ( client->checkmove(n_src,n_dst) != API_OK)
+		if ( client->rename(n_src,dstFolder) != API_OK)
 				return -3;
-			n_src->attrs.map['n'] = path.second.c_str();
-			if (client->setattr(n_src))
+		
+		n_src->attrs.map['n'] = path.second.c_str();
+		if (client->setattr(n_src))
 				return -4;
-			return 0;
-		}
-
-
-
-		if(n_dst->type == FILENODE) {
-			if(client->checkmove(n_src,n_dst->parent) != API_OK)
-				return -1;
-			n_src->attrs.map['n'] = n_dst->attrs.map['n'];
-			error e = client->setattr(n_src);
-
-			if (e) return -1;
-			e = client->unlink(n_dst);
-			if(e) return -1;
-		} else {
-			client->checkmove(n_src,n_dst);
-
-
-		}
-
+		
+		//delete overwritten file
+		if(n_dst && n_dst->type == FILENODE) 
+			client->unlink(n_dst);
+			
+		
+		
 	}
 
 	return 0;

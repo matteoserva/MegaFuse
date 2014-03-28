@@ -110,6 +110,7 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 
 int MegaFuse::rename(const char * src, const char *dst)
 {
+	printf("--------requested rename from %s to %s\n",src,dst);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	{
 		std::lock_guard<std::mutex>lock2(engine_mutex);
@@ -131,6 +132,7 @@ int MegaFuse::rename(const char * src, const char *dst)
 		if(sourceCached)
 		{   //we have the source file in cache.
 			//create [dst] if needed
+			printf("---rename src found in cache \n");
 			std::swap(file_cache[dst],file_cache[src]);
 			eraseCacheRow(file_cache.find(src));
 			
@@ -141,7 +143,10 @@ int MegaFuse::rename(const char * src, const char *dst)
 		
 		Node *n_src = nodeByPath(src);
 		if(!n_src)
-			return -1;
+			if(sourceCached)
+				return 0;
+			else
+				return -ENOENT;
 		Node *n_dst = nodeByPath(dst);
 		auto path = splitPath(dst);
 		Node *dstFolder = nodeByPath(path.first);
@@ -175,7 +180,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 
-	printf("getattr chiamato\n");
+	printf("-------------getattr requested, %s\n",path);
 	{
 		std::lock_guard<std::mutex>lock2(engine_mutex);
 
@@ -282,11 +287,11 @@ Node* MegaFuse::childNodeByName(Node *p,std::string name)
 	}
 	for (node_list::iterator it = p->children.begin(); it != p->children.end(); it++) {
 		if (!strcmp(name.c_str(),(*it)->displayname())) {
-			printf("confronto riuscito\n");
+			printf("file %s found in MEGA\n",name.c_str());
 			return *it;
 		}
 	}
-	printf("confronto fallito\n");
+	printf("file %s not found in MEGA\n",name.c_str());
 	return NULL;
 }
 
@@ -333,6 +338,7 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 		if(!it->second.n_clients && it->second.modified) {
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
+			
 			client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
 			it->second.status = file_cache_row::UPLOADING;
 		}
@@ -422,6 +428,17 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 
 int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 {
+	auto sPath = splitPath(p);
+	//if(sPath.second[0] == '.')
+		//return -EINVAL;
+	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
+		{
+			return create(p,755,fi);
+			
+
+		}
+
+	
 	printf("flags:%X\n",fi->flags);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
@@ -432,18 +449,7 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 
-		if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC)))
-		{
-
-			file_cache[p].status = file_cache_row::AVAILABLE;
-			file_cache[p].size=0;
-			file_cache[p].modified=true;
-			file_cache[p].n_clients++;
-			truncate(file_cache[p].localname.c_str(), 0);
-			return 0;
-
-		}
-
+		
 
 		Node *n = nodeByPath(p);
 
@@ -486,28 +492,21 @@ int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::lock_guard<std::mutex>lock2(engine_mutex);
 
-	auto it = file_cache.find(std::string(path));
-	if(it != file_cache.end()) {
-		it->second.n_clients++;
-		if(it->second.status == file_cache_row::DOWNLOADING)
-			client->tclose(it->second.td);
-		it->second.size = 0;
-		it->second.status = file_cache_row::AVAILABLE;
-		printf("tronco a 0 il file %s\n",it->second.localname.c_str());
-		truncate(it->second.localname.c_str(), 0);
-		return 0;
-	} else {
-		printf("creat, cache miss\n");
-		auto path2 = splitPath(path);
-		Node *n = nodeByPath(path2.first);
-		if(!n)
-			return -EINVAL;
+	printf("-------requested create %s\n",path);
+	auto p = path;
+	auto sPath = splitPath(p);
+	//if(sPath.second[0] == '.')
+		//return -EINVAL;				
+			file_cache[p].status = file_cache_row::AVAILABLE;
+			file_cache[p].size=0;
+			file_cache[p].modified=true;
+			file_cache[p].n_clients++;
+			if(file_cache[p].status == file_cache_row::DOWNLOADING)
+				client->tclose(file_cache[p].td);
+			truncate(file_cache[p].localname.c_str(), 0);
+			return 0;
 
-		file_cache[path].n_clients = 1;
-		file_cache[path].modified = true;
-		file_cache[path].status = file_cache_row::AVAILABLE;
-		return 0;
-	}
+	
 }
 
 
@@ -531,7 +530,7 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-	printf("read richiesto, offset %d, size %d\n",offset,size);
+	printf("read requested, offset %d, size %d\n",offset,size);
 	std::lock_guard<std::mutex>lock(api_mutex);
 
 	engine_mutex.lock();
@@ -637,7 +636,7 @@ int MegaFuse::mkdir(const char * p, mode_t mode)
 int MegaFuse::unlink(std::string filename)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
-	
+	printf("-------------unlinking %s\n",filename.c_str());
 
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
@@ -653,6 +652,8 @@ int MegaFuse::unlink(std::string filename)
 		{
 			if(it->second.n_clients > 0)
 				return -EIO;
+			if(it->second.td > -1)
+				client->tclose(it->second.td);
 			eraseCacheRow(it);
 		}
 		

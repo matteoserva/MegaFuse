@@ -72,24 +72,24 @@ bool MegaFuse::login(std::string username, std::string password)
 int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
+	std::lock_guard<std::mutex>lockE(engine_mutex);
 	std::cout << path <<std::endl;
-	engine_mutex.lock();
 
 	Node* n = nodeByPath(path);
 	if(!n) {
-		engine_mutex.unlock();
 		return -EIO;
 	}
+	if(!(n->type == FOLDERNODE || n->type == ROOTNODE))
+		return -EIO;
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 	std::set<std::string> names;
-	if(n->type == FOLDERNODE || n->type == ROOTNODE) {
 		for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
 			{
 				names.insert((*it)->displayname());
 			}
-	}
+	
 
 	auto p = splitPath(path);
 	std::string p2 = p.first;
@@ -102,7 +102,6 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 	for(auto it =names.begin();it != names.end();++it)
 		filler(buf, it->c_str(), NULL, 0);
 
-	engine_mutex.unlock();
 
 	return 0;
 }
@@ -188,7 +187,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 
 		std::cout <<"PATH: "<<path<<std::endl;
 		Node *n = nodeByPath(path);
-		if(!n) {
+		if(true || !n) {
 			printf("file inesistente per mega, cerco in cache\n");
 			for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
 				if(it->first == std::string(path)) {
@@ -203,21 +202,21 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 					stbuf->st_mtime = it->second.last_modified;
 					if (stat(it->second.localname.c_str(), &st) == 0)
 					{
-						stbuf->st_size =st.st_size;
+						//stbuf->st_size =st.st_size;
 						stbuf->st_mtime = st.st_mtime;
-						printf("recuperate dalla cache : %d\n",stbuf->st_size);
+						//printf("recuperate dalla cache : %d\n",stbuf->st_size);
 					}
 					
 					return 0;
 
 				}
 				printf("nemmeno in cache\n");
-			return -ENOENT;
+			if(!n) return -ENOENT;
 		}
 		switch (n->type) {
 		case FILENODE:
 			printf("filenode richiesto\n");
-			stbuf->st_mode = S_IFREG | 0555;
+			stbuf->st_mode = S_IFREG | 0666;
 			stbuf->st_nlink = 1;
 			stbuf->st_size = n->size;
 			stbuf->st_mtime = n->ctime;
@@ -226,7 +225,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 		case FOLDERNODE:
 		case ROOTNODE:
 			printf("rootnode richiesto\n");
-			stbuf->st_mode = S_IFDIR | 0755;
+			stbuf->st_mode = S_IFDIR | 0777;
 			stbuf->st_nlink = 1;
 			stbuf->st_size = 4096;
 			stbuf->st_mtime = n->ctime;
@@ -342,8 +341,8 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 		if(!it->second.n_clients && it->second.modified) {
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
-			//if(target.second[0] == '.')
-				//return 0;
+			if(target.second[0] == '.')
+				return 0;
 			client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
 			it->second.status = file_cache_row::UPLOADING;
 		}
@@ -529,6 +528,15 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 	int s = pwrite(fd,buf,size,offset);
 	close(fd);
 	it->second.modified=true;
+	int newsize = offset + size;
+	if(it->second.size < newsize)
+	{
+		it->second.size = newsize;
+		int numChunks = ceil(float(it->second.size) / CHUNKSIZE );
+		printf("file resized to %d\n",newsize);
+				it->second.availableChunks.resize(numChunks,false);
+		
+	}
 	return s;
 }
 

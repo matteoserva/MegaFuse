@@ -76,12 +76,20 @@ int hello_chmod(const char *a, mode_t m){return 0;}
 int hello_chown(const char *a, uid_t u, gid_t g){return 0;}
 int hello_truncate(const char *a, off_t o){return 0;}
 int hello_link(const char *a, const char *b){
-	printf("link %s %s\n",a,b);
-	return -EPERM;}
+	//return megaFuse->rename(a,b);
+	//printf("link %s %s\n",a,b);
+	return -EMLINK;}
 
-int hello_statvfs(const char *, struct statvfs *)
+int hello_statvfs(const char * a, struct statvfs * stat)
 {
-	return -EPERM;
+	stat->f_bfree=1000;
+	stat->f_bavail=500;
+	stat->f_bsize=4096;
+	stat->f_favail = 100;
+	stat->f_namemax = 256;
+	
+	
+	return 0;
 	
 }
 

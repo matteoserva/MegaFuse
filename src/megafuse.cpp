@@ -129,6 +129,7 @@ int MegaFuse::rename(const char * src, const char *dst)
 			eraseCacheRow(file_cache.find(dst));
 		*/
 		
+		
 		if(sourceCached)
 		{   //we have the source file in cache.
 			//create [dst] if needed
@@ -139,9 +140,9 @@ int MegaFuse::rename(const char * src, const char *dst)
 			
 		}
 		
-		
-		
 		Node *n_src = nodeByPath(src);
+		
+		
 		if(!n_src)
 			if(sourceCached)
 				return 0;
@@ -647,16 +648,16 @@ int MegaFuse::unlink(std::string filename)
 		if(!n && it == file_cache.end())
 			return -ENOENT;
 		
-		
+		if(it != file_cache.end() && it->second.n_clients > 0)
+			return -EBUSY;
+			
+		if(it != file_cache.end() && it->second.td > -1)
+				client->tclose(it->second.td);
 		if(it != file_cache.end())
 		{
-			if(it->second.n_clients > 0)
-				return -EIO;
-			if(it->second.td > -1)
-				client->tclose(it->second.td);
 			eraseCacheRow(it);
+			return 0;
 		}
-		
 		
 		if(!n)
 			return 0;

@@ -42,7 +42,7 @@ class MegaFuse : public DemoApp
 	static const int CHUNKSIZE = 128*1024;
     typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
-
+	std::map <handle,std::string> pendingUploadHandles;
     public:
     private:
     static void event_loop(MegaFuse* megaFuse);
@@ -79,7 +79,7 @@ class MegaFuse : public DemoApp
     void putnodes_result(error, targettype, NewNode*);
     void transfer_update(int, m_off_t, m_off_t, dstime);
     void putfa_result(handle, fatype, error);
-
+	void nodes_updated(Node**, int);
     /*inter thread*/
     std::mutex cvm;
     std::condition_variable cv;

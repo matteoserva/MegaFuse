@@ -290,20 +290,7 @@ Node* MegaFuse::childNodeByName(Node *p,std::string name)
 	return NULL;
 }
 
-bool MegaFuse::upload(std::string filename,std::string dst)
-{
-	std::lock_guard<std::mutex>lock(api_mutex);
-	engine_mutex.lock();
 
-	auto path = splitPath(filename);
-
-	Node *n = nodeByPath(path.first.c_str());
-	if(!n)
-		exit(10);
-	handle nh = n->nodehandle;
-
-	return true;
-}
 
 std::map <std::string,file_cache_row>::iterator MegaFuse::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
 {
@@ -542,7 +529,6 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 }
 
 
-#define BYTESMISSING (it->second.available_bytes>=it->second.size)?0:(int(offset+size) - it->second.available_bytes)
 int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	printf("read richiesto, offset %d, size %d\n",offset,size);
@@ -597,7 +583,6 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 	//engine_mutex.unlock();
 	return s;
 }
-#undef BYTESMISSING
 
 
 int MegaFuse::mkdir(const char * p, mode_t mode)

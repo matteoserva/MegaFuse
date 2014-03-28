@@ -59,7 +59,6 @@ class MegaFuse : public DemoApp
     bool stop();
 	int enqueueDownload(std::string filename,int startOffset);
     bool login(std::string username, std::string password);
-    bool upload(std::string,std::string dst);
     int unlink(std::string);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuse();

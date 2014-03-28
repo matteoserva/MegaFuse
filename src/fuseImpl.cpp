@@ -75,6 +75,15 @@ int hello_utimens(const char *a, const struct timespec tv[2]){return 0;};
 int hello_chmod(const char *a, mode_t m){return 0;}
 int hello_chown(const char *a, uid_t u, gid_t g){return 0;}
 int hello_truncate(const char *a, off_t o){return 0;}
+int hello_link(const char *a, const char *b){
+	printf("link %s %s\n",a,b);
+	return -EPERM;}
+
+int hello_statvfs(const char *, struct statvfs *)
+{
+	return -EPERM;
+	
+}
 
 extern "C" int megafuse_main(int argc,char**argv);
 
@@ -107,6 +116,8 @@ int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 	hello_oper.write      = hello_write;
 	hello_oper.mkdir      = hello_mkdir;
 	hello_oper.rename     =hello_rename;
+	hello_oper.link		= hello_link;
+	hello_oper.statfs    = hello_statvfs;
     return fuse_main(argc, argv, &hello_oper, NULL);
 
 }

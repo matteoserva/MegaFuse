@@ -139,7 +139,11 @@ int MegaFuse::rename(const char * src, const char *dst)
 			
 			
 		}
-		
+		else if(destCached)
+		{
+			eraseCacheRow(file_cache.find(dst));
+			
+		}
 		Node *n_src = nodeByPath(src);
 		
 		
@@ -341,8 +345,8 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 		if(!it->second.n_clients && it->second.modified) {
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
-			if(target.second[0] == '.')
-				return 0;
+			//if(target.second[0] == '.')
+				//return 0;
 			client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
 			it->second.status = file_cache_row::UPLOADING;
 		}
@@ -498,6 +502,18 @@ int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
 
 	printf("-------requested create %s\n",path);
 	auto p = path;
+	
+	if((fi->flags & O_EXCL) && (file_cache.find(p)!= file_cache.end() || nodeByPath(p) != nullptr))
+		return -EEXIST;
+	
+	//workaround for dolphin, disable locks completely
+	if((fi->flags & O_EXCL) )
+	{
+		printf("-----------exclusive file forbidden\n");
+		return -EPERM;
+		
+	}
+		
 	auto sPath = splitPath(p);
 	//if(sPath.second[0] == '.')
 		//return -EINVAL;				

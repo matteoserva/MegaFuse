@@ -76,9 +76,9 @@ int hello_chmod(const char *a, mode_t m){return 0;}
 int hello_chown(const char *a, uid_t u, gid_t g){return 0;}
 int hello_truncate(const char *a, off_t o){return 0;}
 int hello_link(const char *a, const char *b){
-	//return megaFuse->rename(a,b);
+	//return megaFuse->rename(b,a);
 	//printf("link %s %s\n",a,b);
-	return -EMLINK;}
+	return -EPERM;}
 
 int hello_statvfs(const char * a, struct statvfs * stat)
 {

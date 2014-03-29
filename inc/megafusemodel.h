@@ -37,7 +37,7 @@ class MegaFuseCallback : public DemoApp
 
 };
 
-class MegaFuse : public DemoApp
+class MegaFuseModel : public DemoApp
 {
 	static const int CHUNKSIZE = 128*1024;
     typedef std::map <std::string,file_cache_row> cacheMap;
@@ -45,7 +45,7 @@ class MegaFuse : public DemoApp
 	std::map <handle,std::string> pendingUploadHandles;
     public:
     private:
-    static void event_loop(MegaFuse* megaFuse);
+    static void event_loop(MegaFuseModel* megaFuse);
     std::thread event_loop_thread;
     std::mutex engine_mutex;
     std::mutex api_mutex;
@@ -61,7 +61,7 @@ class MegaFuse : public DemoApp
     bool login(std::string username, std::string password);
     int unlink(std::string);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
-    ~MegaFuse();
+    ~MegaFuseModel();
     void check_cache();
     std::map <std::string,file_cache_row>::iterator eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
     /*callbacks*/

@@ -71,7 +71,7 @@ ssize_t pwrite(int, const void *, size_t, off_t) __DARWIN_ALIAS_C(pwrite);
 #include "megacrypto.h"
 #include "megaclient.h"
 #include "megaposix.h"
-#include "megafuse.h"
+#include "megafusemodel.h"
 #include "megabdb.h"
 
 // HttpIO implementation using libcurl
@@ -402,7 +402,7 @@ void term_echo(int echo)
 		tcsetattr(0,TCSANOW,&new_settings);
 	}
 }
-int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
+int megafuse_mainpp(int argc,char**argv,MegaFuseModel* mf);
 
 
 #include "Config.h"
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
 	mkdir(dbpath.c_str(),0700);
 	chdir(dbpath.c_str());
 
-	MegaFuse megaFuse;
+	MegaFuseModel megaFuse;
 	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	megacli();
 	megaFuse.start();

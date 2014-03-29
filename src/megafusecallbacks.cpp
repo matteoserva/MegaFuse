@@ -1,7 +1,7 @@
 #include "megaclient.h"
-#include "megafuse.h"
+#include "megafusemodel.h"
 
-void MegaFuse::putnodes_result(error e, targettype, NewNode* nn)
+void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 {
 	delete[] nn;
 
@@ -12,7 +12,7 @@ void MegaFuse::putnodes_result(error e, targettype, NewNode* nn)
 	cv.notify_one();
 }
 
-void MegaFuse::transfer_failed(int td,  error e)
+void MegaFuseModel::transfer_failed(int td,  error e)
 {
 	printf("upload fallito\n");
 	last_error = e;
@@ -27,7 +27,7 @@ SymmCipher last_key;
 void createthumbnail(const char* filename, unsigned size, string* result);
 
 
-void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, const byte* filekey, SymmCipher* key)
+void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultoken, const byte* filekey, SymmCipher* key)
 {
 
 	//DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
@@ -96,7 +96,7 @@ void MegaFuse::transfer_complete(int td, handle ulhandle, const byte* ultoken, c
 	//upload_lock.unlock();
 }
 
-void MegaFuse::putfa_result(handle, fatype, error e)
+void MegaFuseModel::putfa_result(handle, fatype, error e)
 {
 	printf("putfa ricevuto\n\n");
 	if(e)
@@ -106,7 +106,7 @@ void MegaFuse::putfa_result(handle, fatype, error e)
 
 }
 
-void MegaFuse::nodes_updated(Node** n, int c)
+void MegaFuseModel::nodes_updated(Node** n, int c)
 {
 	DemoApp::nodes_updated(n,c);
 	
@@ -142,7 +142,7 @@ void MegaFuse::nodes_updated(Node** n, int c)
 		
 	}
 }
-void MegaFuse::topen_result(int td, error e)
+void MegaFuseModel::topen_result(int td, error e)
 {
 
 	printf("topen fallito!\n");
@@ -156,7 +156,7 @@ void MegaFuse::topen_result(int td, error e)
 	//open_lock.unlock();
 }
 
-void MegaFuse::unlink_result(handle h, error e)
+void MegaFuseModel::unlink_result(handle h, error e)
 {
 
 	printf("unlink eseguito\n");
@@ -168,7 +168,7 @@ void MegaFuse::unlink_result(handle h, error e)
 	//unlink_lock.unlock();
 }
 // topen() succeeded (download only)
-void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
+void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int pfa)
 {
 	last_error = API_OK;
 	result = td;
@@ -207,7 +207,7 @@ void MegaFuse::topen_result(int td, string* filename, const char* fa, int pfa)
 	cv.notify_all();
 }
 
-void MegaFuse::transfer_failed(int td, string& filename, error e)
+void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 {
 
 	printf("download fallito: %d\n",e);
@@ -224,7 +224,7 @@ void MegaFuse::transfer_failed(int td, string& filename, error e)
 	//download_lock.unlock();
 }
 
-std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
+std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
 {
 	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
 		if(it->second.status == status && it->second.td == td)
@@ -236,7 +236,7 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::findCacheByTransfer(in
 /*
   macs and fn must be ignored.
 */
-void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
+void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
 	if(it == file_cache.end())
@@ -294,7 +294,7 @@ void MegaFuse::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 	//download_lock.unlock();
 }
 
-void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime starttime)
+void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime starttime)
 {
 
 	static time_t last = time(NULL);
@@ -380,7 +380,7 @@ void MegaFuse::transfer_update(int td, m_off_t bytes, m_off_t size, dstime start
 
 }
 
-void MegaFuse::login_result(error e)
+void MegaFuseModel::login_result(error e)
 {
 	printf("risultato arrivato\n");
 	{

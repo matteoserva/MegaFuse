@@ -2,7 +2,7 @@
 
 #include "megacrypto.h"
 #include "megaclient.h"
-#include "megafuse.h"
+#include "megafusemodel.h"
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -30,7 +30,7 @@ file_cache_row::~file_cache_row()
 
 }
 
-void MegaFuse::event_loop(MegaFuse* that)
+void MegaFuseModel::event_loop(MegaFuseModel* that)
 {
 	char *saved_line = NULL;
 	int saved_point = 0;
@@ -43,12 +43,12 @@ void MegaFuse::event_loop(MegaFuse* that)
 	}
 }
 
-bool MegaFuse::start()
+bool MegaFuseModel::start()
 {
 	event_loop_thread = std::thread(event_loop,this);
 }
 
-bool MegaFuse::login(std::string username, std::string password)
+bool MegaFuseModel::login(std::string username, std::string password)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	{
@@ -69,7 +69,7 @@ bool MegaFuse::login(std::string username, std::string password)
 		return true;
 }
 
-int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
+int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::lock_guard<std::mutex>lockE(engine_mutex);
@@ -108,7 +108,7 @@ int MegaFuse::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t 
 
 
 
-int MegaFuse::rename(const char * src, const char *dst)
+int MegaFuseModel::rename(const char * src, const char *dst)
 {
 	printf("--------requested rename from %s to %s\n",src,dst);
 	std::lock_guard<std::mutex>lock(api_mutex);
@@ -181,7 +181,7 @@ int MegaFuse::rename(const char * src, const char *dst)
 }
 
 
-int MegaFuse::getAttr(const char *path, struct stat *stbuf)
+int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 
@@ -245,7 +245,7 @@ int MegaFuse::getAttr(const char *path, struct stat *stbuf)
 
 }
 
-std::pair<std::string,std::string> MegaFuse::splitPath(std::string path)
+std::pair<std::string,std::string> MegaFuseModel::splitPath(std::string path)
 {
 	int pos = path.find_last_of('/');
 	std::string basename = path.substr(0,pos);
@@ -256,7 +256,7 @@ std::pair<std::string,std::string> MegaFuse::splitPath(std::string path)
 }
 
 //warning, no mutex
-Node* MegaFuse::nodeByPath(std::string path)
+Node* MegaFuseModel::nodeByPath(std::string path)
 {
 	printf("searching node by path %s\n",path.c_str());
 	if(engine_mutex.try_lock()) {
@@ -288,7 +288,7 @@ Node* MegaFuse::nodeByPath(std::string path)
 	return n;
 }
 
-Node* MegaFuse::childNodeByName(Node *p,std::string name)
+Node* MegaFuseModel::childNodeByName(Node *p,std::string name)
 {
 	if(engine_mutex.try_lock()) {
 		abort();
@@ -304,7 +304,7 @@ Node* MegaFuse::childNodeByName(Node *p,std::string name)
 
 
 
-std::map <std::string,file_cache_row>::iterator MegaFuse::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
+std::map <std::string,file_cache_row>::iterator MegaFuseModel::eraseCacheRow(std::map <std::string,file_cache_row>::iterator it)
 {
 	if(it->second.n_clients != 0)
 		return ++it;
@@ -314,7 +314,7 @@ std::map <std::string,file_cache_row>::iterator MegaFuse::eraseCacheRow(std::map
 	return it;
 }
 
-void MegaFuse::check_cache()
+void MegaFuseModel::check_cache()
 {
 	if(file_cache.size() < 2)
 		return;
@@ -333,7 +333,7 @@ void createthumbnail(const char* filename, unsigned size, string* result);
 
 
 
-int MegaFuse::release(const char *path, struct fuse_file_info *fi)
+int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 {
 	int ret = 0;
 	std::lock_guard<std::mutex>lock(api_mutex);
@@ -364,7 +364,7 @@ int MegaFuse::release(const char *path, struct fuse_file_info *fi)
 	return ret;
 }
 
-bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
+bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int size)
 {
 	auto it = file_cache.find(std::string(filename));
 	if(it == file_cache.end())
@@ -380,7 +380,7 @@ bool MegaFuse::chunksAvailable(std::string filename,int startOffset,int size)
 }
 
 
-int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
+int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 {
 	Node *n;
 	{
@@ -434,7 +434,7 @@ int MegaFuse::enqueueDownload(std::string remotename,int startOffset=0)
 }
 
 
-int MegaFuse::open(const char *p, struct fuse_file_info *fi)
+int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 {
 	auto sPath = splitPath(p);
 	//if(sPath.second[0] == '.')
@@ -495,7 +495,7 @@ int MegaFuse::open(const char *p, struct fuse_file_info *fi)
 
 
 
-int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
+int MegaFuseModel::create(const char *path, mode_t mode, struct fuse_file_info * fi)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::lock_guard<std::mutex>lock2(engine_mutex);
@@ -530,7 +530,7 @@ int MegaFuse::create(const char *path, mode_t mode, struct fuse_file_info * fi)
 }
 
 
-int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
+int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::lock_guard<std::mutex>lock2(engine_mutex);
@@ -557,7 +557,7 @@ int MegaFuse::write(const char * path, const char *buf, size_t size, off_t offse
 }
 
 
-int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	printf("read requested, offset %d, size %d\n",offset,size);
 	std::lock_guard<std::mutex>lock(api_mutex);
@@ -613,7 +613,7 @@ int MegaFuse::read(const char *path, char *buf, size_t size, off_t offset, struc
 }
 
 
-int MegaFuse::mkdir(const char * p, mode_t mode)
+int MegaFuseModel::mkdir(const char * p, mode_t mode)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	engine_mutex.lock();
@@ -662,7 +662,7 @@ int MegaFuse::mkdir(const char * p, mode_t mode)
 		return -1;
 	return 0;
 }
-int MegaFuse::unlink(std::string filename)
+int MegaFuseModel::unlink(std::string filename)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	printf("-------------unlinking %s\n",filename.c_str());
@@ -705,7 +705,7 @@ int MegaFuse::unlink(std::string filename)
 
 }
 
-MegaFuse::~MegaFuse()
+MegaFuseModel::~MegaFuseModel()
 {
 	auto it = file_cache.begin();
 	while(it != file_cache.end())

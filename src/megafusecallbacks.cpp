@@ -1,6 +1,12 @@
 #include "megaclient.h"
 #include "megafusemodel.h"
 
+void MegaFuseModel::users_updated(User** u, int count)
+{
+	DemoApp::users_updated(u,count);
+	eh.notifyEvent(EventsHandler::USERS_UPDATED);
+}
+
 void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 {
 	delete[] nn;
@@ -383,12 +389,10 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 void MegaFuseModel::login_result(error e)
 {
 	printf("risultato arrivato\n");
-	{
-		std::lock_guard<std::mutex> lk(cvm);
-		login_ret = (e)? -1:1;
-	}
-	cv.notify_one();
+	int login_ret = (e)? -1:1;
+	
 	if(!e)
 		client->fetchnodes();
+	eh.notifyEvent(EventsHandler::LOGIN_RESULT,login_ret);
 	printf("fine login_result\n");
 }

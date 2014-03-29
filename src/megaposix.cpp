@@ -73,6 +73,7 @@ ssize_t pwrite(int, const void *, size_t, off_t) __DARWIN_ALIAS_C(pwrite);
 #include "megaposix.h"
 #include "megafusemodel.h"
 #include "megabdb.h"
+#include "MegaFuse.h"
 
 // HttpIO implementation using libcurl
 CurlHttpIO::CurlHttpIO()
@@ -402,11 +403,11 @@ void term_echo(int echo)
 		tcsetattr(0,TCSANOW,&new_settings);
 	}
 }
-int megafuse_mainpp(int argc,char**argv,MegaFuseModel* mf);
+int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
 
 #include "Config.h"
-
+#include "EventsHandler.h"
 char *arg[] = {"megafuse","-d","/tmp"};
 char mountpoint[256];
 
@@ -423,12 +424,13 @@ int main(int argc, char **argv)
 	std::string dbpath = string(getenv("HOME")) + "/.megaclient/";
 	mkdir(dbpath.c_str(),0700);
 	chdir(dbpath.c_str());
-
-	MegaFuseModel megaFuseModel;
+	
+	EventsHandler eh;
+	MegaFuseModel megaFuseModel(eh);
 	client = new MegaClient(&megaFuseModel,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	megacli();
 	megaFuseModel.start();
-	if(!megaFuse.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
+	if(!megaFuseModel.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
     {
         printf("login failed. exiting...\n");
         exit(1);

@@ -3,7 +3,7 @@ TARGET = MegaFuse
 ###############
 
 
-SRC = src/MegaFuse.cpp src/megacli.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp sdk/megabdb.cpp src/megaclient.cpp sdk/megacrypto.cpp src/fuseImpl.cpp
+SRC = src/EventsHandler.cpp src/MegaFuse.cpp src/megacli.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp sdk/megabdb.cpp src/megaclient.cpp sdk/megacrypto.cpp src/fuseImpl.cpp
 
 OUT = $(TARGET)
 OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))

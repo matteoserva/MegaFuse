@@ -1,4 +1,7 @@
 #include "MegaFuse.h"
+
+
+#include "megaclient.h"
 #include "megafusemodel.h"
 
 MegaFuse::MegaFuse(MegaFuseModel *m):model(m)
@@ -13,7 +16,7 @@ int MegaFuse::create(const char* path, mode_t mode, fuse_file_info* fi)
 	return model->create(path,mode,fi);
 }
 
-int MegaFuse::getAttr(const char* path, stat* stbuf)
+int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 {
 	return model->getAttr(path,stbuf);
 }
@@ -30,7 +33,7 @@ int MegaFuse::open(const char* path, fuse_file_info* fi)
 
 int MegaFuse::read(const char* path, char* buf, size_t size, off_t offset, fuse_file_info* fi)
 {
-	return model->read(path,fi);
+	return model->read(path,buf,size,offset,fi);
 }
 
 int MegaFuse::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi)
@@ -51,5 +54,10 @@ int MegaFuse::rename(const char* src, const char* dst)
 
 int MegaFuse::write(const char* path, const char* buf, size_t size, off_t offset, fuse_file_info* fi)
 {
-	return model->write(path,bug,size,offset,fi);
+	return model->write(path,buf,size,offset,fi);
+}
+int MegaFuse::unlink(const char* s)
+{
+	return model->unlink(s);
+	
 }

@@ -13,7 +13,7 @@ void MegaFuseFilePut::start()
     AppFilePut::start();
 }
 
-file_cache_row::file_cache_row(): td(-1),status(INVALID),modified(false),n_clients(0),available_bytes(0),size(0),startOffset(0)
+file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false)
 {
 	localname = tmpnam(NULL);
 	tmpname = tmpnam(NULL);
@@ -32,8 +32,7 @@ file_cache_row::~file_cache_row()
 
 void MegaFuseModel::event_loop(MegaFuseModel* that)
 {
-	char *saved_line = NULL;
-	int saved_point = 0;
+
 
 	for (;;) {
 		that->engine_mutex.lock();
@@ -46,6 +45,7 @@ void MegaFuseModel::event_loop(MegaFuseModel* that)
 bool MegaFuseModel::start()
 {
 	event_loop_thread = std::thread(event_loop,this);
+	return true;
 }
 
 bool MegaFuseModel::login(std::string username, std::string password)
@@ -56,16 +56,18 @@ bool MegaFuseModel::login(std::string username, std::string password)
 		engine_mutex.lock();
 		client->pw_key(password.c_str(),pwkey);
 		client->login(username.c_str(),pwkey,1);
-		login_ret=0;
 		engine_mutex.unlock();
-		printf("login: aspetto il risultato\n");
-		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this] {return login_ret;});
-	}
+		{
+			EventsListener el(eh,EventsHandler::LOGIN_RESULT);
+			EventsListener eu(eh,EventsHandler::USERS_UPDATED);
+			auto l_res = el.waitEvent();
+			if (l_res.result <0)
+				return false;
+			eu.waitEvent();
+		}
 
-	if(login_ret < 0)
-		return false;
-	else
+
+	}
 		return true;
 }
 
@@ -111,6 +113,7 @@ int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,o
 int MegaFuseModel::rename(const char * src, const char *dst)
 {
 	printf("--------requested rename from %s to %s\n",src,dst);
+	bool waitUnlink = false;
 	std::lock_guard<std::mutex>lock(api_mutex);
 	{
 		std::lock_guard<std::mutex>lock2(engine_mutex);
@@ -148,10 +151,12 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 		
 		
 		if(!n_src)
+		{
 			if(sourceCached)
 				return 0;
 			else
 				return -ENOENT;
+		}
 		Node *n_dst = nodeByPath(dst);
 		auto path = splitPath(dst);
 		Node *dstFolder = nodeByPath(path.first);
@@ -168,10 +173,16 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 		
 		//delete overwritten file
 		if(n_dst && n_dst->type == FILENODE) 
-			client->unlink(n_dst);
-			
-		
-		
+			{
+				waitUnlink = true;
+				client->unlink(n_dst);
+			}
+	}
+	if(waitUnlink)
+	{
+		putnodes_ret = 0;
+		std::unique_lock<std::mutex> lk(cvm);
+		cv.wait(lk, [this] {return unlink_ret;});
 	}
 
 	return 0;
@@ -180,6 +191,10 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 
 }
 
+MegaFuseModel::MegaFuseModel(EventsHandler &eh):eh(eh)
+{
+	
+}
 
 int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 {
@@ -192,16 +207,13 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 		std::cout <<"PATH: "<<path<<std::endl;
 		Node *n = nodeByPath(path);
 		if(true || !n) {
-			printf("file inesistente per mega, cerco in cache\n");
+			printf("looking in cache\n");
 			for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
 				if(it->first == std::string(path)) {
 					stbuf->st_mode = S_IFREG | 0555;
 					stbuf->st_nlink = 1;
 
 					struct stat st;
-
-
-					printf("calcolo le dimensioni\n");
 					stbuf->st_size = it->second.size;
 					stbuf->st_mtime = it->second.last_modified;
 					if (stat(it->second.localname.c_str(), &st) == 0)
@@ -214,7 +226,7 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 					return 0;
 
 				}
-				printf("nemmeno in cache\n");
+				printf("not found in cache\n");
 			if(!n) return -ENOENT;
 		}
 		switch (n->type) {
@@ -236,10 +248,10 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 			break;
 		default:
 			printf("einval nodo\n");
-			-EINVAL;
+			return -EINVAL;
 		}
 	}
-	printf("getattr finito\n");
+	printf("getattr completed\n");
 
 	return 0;
 
@@ -372,7 +384,7 @@ bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int siz
 	int startChunk = startOffset/CHUNKSIZE;
 	int endChunk = ceil(float(startOffset+size) / CHUNKSIZE);
 	bool available = true;
-	for(int i = startChunk;i < endChunk && i < it->second.availableChunks.size();i++)
+	for(int i = startChunk;i < endChunk && i < (int) it->second.availableChunks.size();i++)
 	{
 		available = available && it->second.availableChunks[i];
 	}
@@ -559,7 +571,7 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 
 int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-	printf("read requested, offset %d, size %d\n",offset,size);
+	printf("read requested, offset %ld, size %ld\n",offset,size);
 	std::lock_guard<std::mutex>lock(api_mutex);
 
 	engine_mutex.lock();
@@ -605,7 +617,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 	}
 
 	//int base = offset-(it->second.startOffset);
-	printf("-----offset richiesto: %d, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
+	printf("-----offset richiesto: %ld, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
 	int s = pread(fd,buf,size,offset);
 	close(fd);
 	//engine_mutex.unlock();

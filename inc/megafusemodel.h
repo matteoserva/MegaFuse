@@ -4,6 +4,7 @@
 #include <fuse.h>
 #include <condition_variable>
 
+
 struct MegaFuseFilePut : public AppFilePut
 {
 	void start();
@@ -36,15 +37,17 @@ class MegaFuseCallback : public DemoApp
 
 
 };
-
+#include "EventsHandler.h"
 class MegaFuseModel : public DemoApp
 {
 	static const int CHUNKSIZE = 128*1024;
     typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
 	std::map <handle,std::string> pendingUploadHandles;
-    public:
-    private:
+public:
+	MegaFuseModel(EventsHandler &);
+private:
+	EventsHandler &eh;
     static void event_loop(MegaFuseModel* megaFuse);
     std::thread event_loop_thread;
     std::mutex engine_mutex;
@@ -83,10 +86,10 @@ class MegaFuseModel : public DemoApp
     /*inter thread*/
     std::mutex cvm;
     std::condition_variable cv;
-    int login_ret;
     int opend_ret;
     int putnodes_ret;
     int unlink_ret;
+	void users_updated(User** u, int count);
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);

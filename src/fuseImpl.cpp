@@ -7,10 +7,10 @@
 #include <fcntl.h>
 
 #include "megaclient.h"
-#include "megafusemodel.h"
+#include "MegaFuse.h"
 
 
-static MegaFuseModel* megaFuse;
+static MegaFuse* megaFuse;
 
 
 
@@ -96,7 +96,7 @@ int hello_statvfs(const char * a, struct statvfs * stat)
 
 static struct fuse_operations hello_oper;
 
-int megafuse_mainpp(int argc,char**argv,MegaFuseModel* mf)
+int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 {
     megaFuse = mf;
 

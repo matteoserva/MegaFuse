@@ -424,10 +424,10 @@ int main(int argc, char **argv)
 	mkdir(dbpath.c_str(),0700);
 	chdir(dbpath.c_str());
 
-	MegaFuseModel megaFuse;
-	client = new MegaClient(&megaFuse,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
+	MegaFuseModel megaFuseModel;
+	client = new MegaClient(&megaFuseModel,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	megacli();
-	megaFuse.start();
+	megaFuseModel.start();
 	if(!megaFuse.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
     {
         printf("login failed. exiting...\n");
@@ -436,19 +436,12 @@ int main(int argc, char **argv)
     printf("login successful\n");
     usleep(500000);
 
-	//megaFuse.enqueueDownload("/megaclient",1024*2048);
-	//usleep(500000);
 
-	//while(1)
-		//usleep(500000);
-
-	//megaFuse.open("/megaclient",nullptr);
-
-	//while(true)
-        //usleep(500000);
     strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
     arg[2] = mountpoint;
 
+
+	MegaFuse mf(&megaFuseModel);
 	if(Config::getInstance()->fuseindex > -1)
 	{
 		unsigned int fuseargs = argc + 3 -Config::getInstance()->fuseindex;
@@ -461,11 +454,11 @@ int main(int argc, char **argv)
 		fuseargv[2] = mountpoint;
 		for(int i = 0; i < fuseargs -3 ; i++)
 			fuseargv[3+i] = argv[i + Config::getInstance()->fuseindex];
-		megafuse_mainpp(fuseargs,fuseargv,&megaFuse);
+		megafuse_mainpp(fuseargs,fuseargv,&mf);
 
 	}
 	else
-		megafuse_mainpp(3,arg,&megaFuse);
+		megafuse_mainpp(3,arg,&mf);
 
 
 }

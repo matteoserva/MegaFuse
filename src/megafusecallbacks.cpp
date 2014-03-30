@@ -22,6 +22,17 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 {
 	printf("upload fallito\n");
 	last_error = e;
+	client->tclose(td);
+	auto it = findCacheByTransfer(td, file_cache_row::UPLOADING);
+	if(it == file_cache.end())
+	{
+		it->second.status = file_cache_row::AVAILABLE;
+		it->second.td = -1;
+	}
+	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
+	
+	
+	//eh.notifyEvent(EventsHandler::NODE_UPDATED,-1);
 	//  upload_lock.unlock();
 }
 
@@ -37,14 +48,27 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 {
 
 	//DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
+	auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
+	if(it == file_cache.end())
+	{
+		client->tclose(td);
+		return;
+	}
+		
 	printf("upload riuscito\n");
-	FilePut* putf = (FilePut*)client->gettransfer((transfer_list*)&client->putq,td);
 
-	if (putf) {
-		if (!putf->targetuser.size() && !client->nodebyhandle(putf->target)) {
+		auto sPath = splitPath(it->first);
+		
+		Node *target = nodeByPath(sPath.first);
+		if(!target)
+		{
+			cout << "Upload target folder inaccessible, using /" << endl;
+			target = client->nodebyhandle(client->rootnodes[0]);
+		}
+		/*if (!putf->targetuser.size() && !client->nodebyhandle(putf->target)) {
 			cout << "Upload target folder inaccessible, using /" << endl;
 			putf->target = client->rootnodes[0];
-		}
+		}*/
 
 		NewNode* newnode = new NewNode[1];
 
@@ -64,42 +88,35 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 		newnode->parenthandle = UNDEF;
 
 		AttrMap attrs;
+		
+		MegaClient::unescapefilename(&sPath.second);
 
-		MegaClient::unescapefilename(&putf->filename);
+		attrs.map['n'] = sPath.second;
+		std::string localname = it->second.localname;
+		attrs.getjson(&localname);
 
-		attrs.map['n'] = putf->newname.size() ? putf->newname : putf->filename;
+		client->makeattr(key,&newnode->attrstring,localname.c_str());
 
-		attrs.getjson(&putf->filename);
 
-		client->makeattr(key,&newnode->attrstring,putf->filename.c_str());
-
-		MegaFuseFilePut* fp = dynamic_cast<MegaFuseFilePut* >(putf);
-
-		Node *toBeDeleted = nodeByPath(fp->remotename);
+		Node *toBeDeleted = nodeByPath(it->first);
 		if(toBeDeleted)
 			client->unlink(toBeDeleted);
 
 
-		if (putf->targetuser.size()) {
+		/*if (putf->targetuser.size()) {
 			cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
 			client->putnodes(putf->targetuser.c_str(),newnode,1);
-		} else client->putnodes(putf->target,newnode,1);
+		} else*/ client->putnodes(target->nodehandle,newnode,1);
 
-		pendingUploadHandles[newnode->nodehandle] = fp->remotename;
 		printf("ulhandle %lx, nodehandle %lx\n",ulhandle,newnode->nodehandle);
-		auto it = file_cache.find(fp->remotename);
+		
 		it->second.td = -1;
 		it->second.modified = false;
 
-
-
-		delete putf;
-	} else cout << "(Canceled transfer, ignoring)" << endl;
-
 	client->tclose(td);
+	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
 
 
-	//upload_lock.unlock();
 }
 
 void MegaFuseModel::putfa_result(handle, fatype, error e)

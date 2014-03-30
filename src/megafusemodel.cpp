@@ -8,10 +8,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-void MegaFuseFilePut::start()
-{
-    AppFilePut::start();
-}
+
 
 file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false)
 {
@@ -371,15 +368,31 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 			Node *n = nodeByPath(target.first);
 			//if(target.second[0] == '.')
 				//return 0;
-			client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
+			//client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
+			int td = client->topen(it->second.localname.c_str(),-1,2);
+			if (td < 0)
+				return -EAGAIN;
+			it->second.td = td;
 			it->second.status = file_cache_row::UPLOADING;
+
+			std::string thumbnail;
+			createthumbnail(it->second.localname.c_str(),120,&thumbnail);
+
+			if (thumbnail.size())
+			{
+				cout << "Image detected and thumbnail extracted, size " << thumbnail.size() << " bytes" << endl;
+				handle uh = client->uploadhandle(td);
+				client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
+			}
 		}
 	}
 
 	if(it->second.status ==file_cache_row::UPLOADING)
 	{
-		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this,it] {return it->second.status !=file_cache_row::UPLOADING;});
+		{EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
+		auto l_res = el.waitEvent();}
+		{EventsListener el(eh,EventsHandler::NODE_UPDATED);
+		auto l_res = el.waitEvent();}
 	}
 	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 

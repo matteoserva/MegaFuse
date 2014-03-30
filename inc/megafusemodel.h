@@ -5,12 +5,7 @@
 #include <condition_variable>
 
 
-struct MegaFuseFilePut : public AppFilePut
-{
-	void start();
-    std::string remotename;
-	MegaFuseFilePut(const char* fn, handle tn, const char* tu, const char* nn,std::string rn) : AppFilePut(fn,tn,tu,nn) { remotename = rn;}
-};
+
 
 struct file_cache_row
 {
@@ -43,7 +38,6 @@ class MegaFuseModel : public DemoApp
 	static const int CHUNKSIZE = 128*1024;
     typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
-	std::map <handle,std::string> pendingUploadHandles;
 public:
 	MegaFuseModel(EventsHandler &);
 private:

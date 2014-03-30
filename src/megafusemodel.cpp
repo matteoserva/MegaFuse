@@ -113,11 +113,19 @@ int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,o
 int MegaFuseModel::rename(const char * src, const char *dst)
 {
 	printf("--------requested rename from %s to %s\n",src,dst);
-	bool waitUnlink = false;
 	std::lock_guard<std::mutex>lock(api_mutex);
+	
+	
+	Node *n_src ;
+	Node *n_dst ;
+	auto path = splitPath(dst);
+	
+	
+	//move first
 	{
-		std::lock_guard<std::mutex>lock2(engine_mutex);
-		
+		std::unique_lock<std::mutex>lockE(engine_mutex);
+		n_src = nodeByPath(src);
+		n_dst = nodeByPath(dst);
 		//now we handle caches.
 		bool sourceCached = file_cache.find(src) != file_cache.end(); 
 		bool destCached = file_cache.find(dst) != file_cache.end(); 
@@ -147,7 +155,7 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 			eraseCacheRow(file_cache.find(dst));
 			
 		}
-		Node *n_src = nodeByPath(src);
+		
 		
 		
 		if(!n_src)
@@ -157,34 +165,38 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 			else
 				return -ENOENT;
 		}
-		Node *n_dst = nodeByPath(dst);
-		auto path = splitPath(dst);
+		
 		Node *dstFolder = nodeByPath(path.first);
 		
 		if(!dstFolder)
-				return -2;
-
+				return -EINVAL;
+		
 		if ( client->rename(n_src,dstFolder) != API_OK)
 				return -3;
 		
 		n_src->attrs.map['n'] = path.second.c_str();
 		if (client->setattr(n_src))
 				return -4;
+		/*{
+		printf("waiting update\n");
+		EventsListener el(eh,EventsHandler::NODE_UPDATED);
+		lockE.unlock();
+		auto l_res = el.waitEvent();
+		lockE.lock();
+		}*/
+
+		
 		
 		//delete overwritten file
 		if(n_dst && n_dst->type == FILENODE) 
-			{
-				waitUnlink = true;
 				client->unlink(n_dst);
-			}
+		else
+			return 0;
 	}
-	if(waitUnlink)
 	{
-		putnodes_ret = 0;
-		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this] {return unlink_ret;});
+		EventsListener el(eh,EventsHandler::UNLINK_RESULT);
+		auto l_res = el.waitEvent();
 	}
-
 	return 0;
 
 
@@ -682,7 +694,8 @@ int MegaFuseModel::unlink(std::string filename)
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 		Node *n = nodeByPath(filename.c_str());
-		
+		if(!n)
+			printf("file to unlink not found in MEGA\n");
 		auto it = file_cache.find(filename);
 		
 		if(!n && it == file_cache.end())
@@ -696,24 +709,24 @@ int MegaFuseModel::unlink(std::string filename)
 		if(it != file_cache.end())
 		{
 			eraseCacheRow(it);
-			return 0;
+			
 		}
 		
 		if(!n)
 			return 0;
+			
 		error e = client->unlink(n);
 		if(e)
 			return -ENOENT;
 	}
 	{
-		putnodes_ret = 0;
-		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this] {return unlink_ret;});
+		EventsListener el(eh,EventsHandler::UNLINK_RESULT);
+		auto l_res = el.waitEvent();
+		if(l_res.result < 0)
+			return -EIO;
+		return 0;
 	}
 
-	if(unlink_ret<0)
-		return -EIO;
-	return 0;
 
 }
 

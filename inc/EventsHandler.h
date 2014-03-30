@@ -16,7 +16,7 @@ class EventsHandler
 {
 
 	public:
-	enum event{NONE,LOGIN_RESULT,USERS_UPDATED,NODE_UPDATED,NODE_REMOVED};
+	enum event{NONE,LOGIN_RESULT,USERS_UPDATED,NODE_UPDATED,NODE_REMOVED,UNLINK_RESULT};
 	
 	std::map<event,int> listeners;
 	

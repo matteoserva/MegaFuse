@@ -144,6 +144,7 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 				it->second.status = file_cache_row::AVAILABLE;
 			}
 			cv.notify_all();
+			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
 		}
 		
 	}
@@ -166,11 +167,9 @@ void MegaFuseModel::unlink_result(handle h, error e)
 {
 
 	printf("unlink eseguito\n");
-	{
-		std::lock_guard<std::mutex> lk(cvm);
-		unlink_ret  = (e)?-1:1;
-	}
-	cv.notify_one();
+	int unlink_ret  = (e)?-1:1;
+	eh.notifyEvent(EventsHandler::UNLINK_RESULT,unlink_ret);
+	
 	//unlink_lock.unlock();
 }
 // topen() succeeded (download only)
@@ -237,6 +236,8 @@ std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransf
 			return it;
 	return file_cache.end();
 }
+
+
 
 
 /*

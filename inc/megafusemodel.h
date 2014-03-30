@@ -81,6 +81,7 @@ private:
     void unlink_result(handle, error);
     void putnodes_result(error, targettype, NewNode*);
     void transfer_update(int, m_off_t, m_off_t, dstime);
+	//void rename_result(handle, error); NOT WORKING
     void putfa_result(handle, fatype, error);
 	void nodes_updated(Node**, int);
     /*inter thread*/

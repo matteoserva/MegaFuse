@@ -18,7 +18,7 @@ INCLUDES = -I inc -I /usr/include/cryptopp -I sdk
 
 # C compiler flags (-g -O2 -Wall)
 CCFLAGS =   -O0 -g -fstack-protector-all -Wall -D_FILE_OFFSET_BITS=64 #-non-call-exceptions
-CPPFLAGS =  -std=c++0x $(CCFLAGS) -D_GLIBCXX_DEBUG -D_FILE_OFFSET_BITS=64
+CPPFLAGS =  -std=c++0x $(CCFLAGS) -D_GLIBCXX_DEBUG
 
 # compiler
 CC = gcc
@@ -37,8 +37,8 @@ all: megafuse
 $(OUT): $(OBJ) 
 	$(CPP) $(CPPFLAGS) -o $(OUT) $(OBJ) $(LDFLAGS)
 
-.c.o:
-	$(CC) $(INCLUDES) $(CCFLAGS) -c $< -o $@ 
+#.c.o:
+#	$(CC) $(INCLUDES) $(CCFLAGS) -c $< -o $@ 
 
 .cpp.o:
 	$(CPP) $(INCLUDES) $(CPPFLAGS) -c $< -o $@

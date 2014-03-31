@@ -141,12 +141,15 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 			
 		Node * nd = n[i];
 		std::string fullpath = std::string(nd->displayname());
-		while(nd->parent->type != ROOTNODE)
+		while(nd->parent && nd->parent->type == FOLDERNODE)
 		{
 			fullpath = std::string(nd->parent->displayname()) + "/" + fullpath;
 			nd = nd->parent;
 		}
+		if(nd->parent->type == ROOTNODE)
 		fullpath = "/" + fullpath;
+		else
+			fullpath = "//" + fullpath;
 		printf("fullpath %s\n",fullpath.c_str());
 		auto it = file_cache.find(fullpath);
 		if(it == file_cache.end())

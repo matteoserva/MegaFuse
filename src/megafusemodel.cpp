@@ -238,6 +238,7 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 				printf("not found in cache\n");
 			if(!n) return -ENOENT;
 		}
+		printf("attrstring: %s\n",n->attrstring.c_str());
 		switch (n->type) {
 		case FILENODE:
 			printf("filenode richiesto\n");

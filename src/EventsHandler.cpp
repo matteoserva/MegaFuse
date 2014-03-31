@@ -32,7 +32,7 @@ int EventsListener::notifyEvent(EventResult &er)
 	listener_cvm.notify_one();
 	
 	
-	
+	return 0;
 }
 
 int EventsHandler::notifyEvent(event e,int res,std::string v)
@@ -42,6 +42,7 @@ int EventsHandler::notifyEvent(event e,int res,std::string v)
 	EventResult er{res,v};
 	for(EventsListener * it : listeners[e])
 		it->notifyEvent(er);
+	return 0;
 }
 
 void EventsHandler::addListener(EventsListener* l, event e)

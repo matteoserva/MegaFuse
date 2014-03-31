@@ -34,8 +34,21 @@ DEALINGS IN THE SOFTWARE.
 
 #define USE_VARARGS
 #define PREFER_STDARG
+/*
 #include <readline/readline.h>
 #include <readline/history.h>
+*/
+#define add_history(...) 0
+#define rl_end(...) 0
+#define rl_copy_text(...) 0
+#define rl_save_prompt(...) 0
+#define rl_replace_line(...) 0
+#define rl_redisplay(...) 0
+#define rl_restore_prompt(...) 0
+#define rl_replace_line(...) 0
+#define rl_redisplay(...) 0
+#define rl_callback_handler_install(...) 0
+int rl_point = 0;
 
 #include <FreeImage.h>
 
@@ -830,13 +843,13 @@ static const char* get_prompt(void)
 
 static void setprompt(prompttype p)
 {
-	/*if (prompt != COMMAND) cout << endl;
+	if (prompt != COMMAND) cout << endl;
 
 	prompt = p;
 
 	term_echo(p == COMMAND);
 
-	rl_callback_handler_install(get_prompt(),process_line);*/
+	rl_callback_handler_install(get_prompt(),process_line);
 }
 
 TreeProcCopy::TreeProcCopy()
@@ -914,7 +927,7 @@ static byte newpwkey[SymmCipher::KEYLENGTH];
 
 void process_line(char* line)
 {
-	/*switch (prompt)
+	switch (prompt)
 	{
 		case LOGINPASSWORD:
 			client->pw_key(line,pwkey);
@@ -2036,7 +2049,7 @@ void process_line(char* line)
 
 			cout << "?Invalid command" << endl;
 	}
-*/}
+}
 
 // callback for non-EAGAIN request-level errors
 // in most cases, retrying is futile, so the application exits
@@ -2351,16 +2364,17 @@ void DemoApp::userattr_update(User* u, int priv, const char* n)
 {
 	cout << "Notification: User " << u->email << " -" << (priv ? " private" : "") << " attribute " << n << " added or updated" << endl;
 }
-
+/*
 // main loop
 void megacli()
 {
 	term_init();
 
 	setprompt(COMMAND);
-    return;
 
-/*
+    char *saved_line = NULL;
+    int saved_point = 0;
+
 	for (;;)
 	{
 		if (redisplay)
@@ -2388,5 +2402,4 @@ void megacli()
 		// have the engine invoke HttpIO's waitio(), if so required
 		client->wait();
 	}
-*/
-}
+}*/

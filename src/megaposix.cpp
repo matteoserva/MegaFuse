@@ -428,7 +428,7 @@ int main(int argc, char **argv)
 	EventsHandler eh;
 	MegaFuseModel megaFuseModel(eh);
 	client = new MegaClient(&megaFuseModel,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
-	megacli();
+	//megacli();
 	megaFuseModel.start();
 	if(!megaFuseModel.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
     {

@@ -41,7 +41,6 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 std::string last_thumbnail;
 SymmCipher last_key;
 
-void createthumbnail(const char* filename, unsigned size, string* result);
 
 
 void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultoken, const byte* filekey, SymmCipher* key)

@@ -3,7 +3,9 @@ TARGET = MegaFuse
 ###############
 
 
-SRC = src/EventsHandler.cpp src/MegaFuse.cpp src/megacli.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp sdk/megabdb.cpp src/megaclient.cpp sdk/megacrypto.cpp src/fuseImpl.cpp
+SRC = src/EventsHandler.cpp src/MegaFuse.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp src/fuseImpl.cpp src/megacli.cpp
+
+SRC += sdk/megabdb.cpp sdk/megaclient.cpp sdk/megacrypto.cpp 
 
 OUT = $(TARGET)
 OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
@@ -12,7 +14,7 @@ OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
 
 
 # include directories
-INCLUDES = -I inc -I /usr/include/cryptopp
+INCLUDES = -I inc -I /usr/include/cryptopp -I sdk
 
 # C compiler flags (-g -O2 -Wall)
 CCFLAGS =   -O0 -g -fstack-protector-all -Wall -D_FILE_OFFSET_BITS=64 #-non-call-exceptions

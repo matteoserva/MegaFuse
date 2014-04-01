@@ -1,13 +1,20 @@
 #include <fuse.h>
-
+#include <thread>
+#include "EventsHandler.h"
 class MegaFuseModel;
 class MegaFuse
 {
 private:
 	MegaFuseModel *model;
-	
+	EventsHandler eh;
+	byte pwkey[SymmCipher::KEYLENGTH];
+	std::mutex engine_mutex;
+	static void event_loop(MegaFuse* megaFuse);
+    std::thread event_loop_thread;
 	public:
-	MegaFuse(MegaFuseModel *);
+	MegaFuse();
+	
+	bool login();
 	
 	int open(const char *path, struct fuse_file_info *fi);
     int readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi);

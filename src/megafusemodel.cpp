@@ -27,21 +27,11 @@ file_cache_row::~file_cache_row()
 
 }
 
-void MegaFuseModel::event_loop(MegaFuseModel* that)
-{
 
-
-	for (;;) {
-		that->engine_mutex.lock();
-		that->client->exec();
-		that->engine_mutex.unlock();
-		that->client->wait();
-	}
-}
 
 bool MegaFuseModel::start()
 {
-	event_loop_thread = std::thread(event_loop,this);
+	
 	return true;
 }
 
@@ -50,18 +40,7 @@ bool MegaFuseModel::login(std::string username, std::string password)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	{
 
-		engine_mutex.lock();
-		client->pw_key(password.c_str(),pwkey);
-		client->login(username.c_str(),pwkey,1);
-		engine_mutex.unlock();
-		{
-			EventsListener el(eh,EventsHandler::LOGIN_RESULT);
-			EventsListener eu(eh,EventsHandler::USERS_UPDATED);
-			auto l_res = el.waitEvent();
-			if (l_res.result <0)
-				return false;
-			eu.waitEvent();
-		}
+		
 
 
 	}
@@ -200,7 +179,7 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 
 }
 
-MegaFuseModel::MegaFuseModel(EventsHandler &eh):eh(eh)
+MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):eh(eh),engine_mutex(em)
 {
 	
 }
@@ -215,7 +194,7 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 
 		std::cout <<"PATH: "<<path<<std::endl;
 		Node *n = nodeByPath(path);
-		if(true || !n) {
+
 			printf("looking in cache\n");
 			for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
 				if(it->first == std::string(path)) {
@@ -236,32 +215,9 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 
 				}
 				printf("not found in cache\n");
-			if(!n) return -ENOENT;
-		}
-		printf("attrstring: %s\n",n->attrstring.c_str());
-		switch (n->type) {
-		case FILENODE:
-			printf("filenode richiesto\n");
-			stbuf->st_mode = S_IFREG | 0666;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = n->size;
-			stbuf->st_mtime = n->ctime;
-			break;
-
-		case FOLDERNODE:
-		case ROOTNODE:
-			printf("rootnode richiesto\n");
-			stbuf->st_mode = S_IFDIR | 0777;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 4096;
-			stbuf->st_mtime = n->ctime;
-			break;
-		default:
-			printf("einval nodo\n");
-			return -EINVAL;
-		}
 	}
-	printf("getattr completed\n");
+	return -ENOENT;
+	
 
 	return 0;
 
@@ -654,51 +610,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 int MegaFuseModel::mkdir(const char * p, mode_t mode)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
-	engine_mutex.lock();
-
-	auto path = splitPath(p);
-	std::string base = path.first;
-	std::string newname = path.second;
-
-	Node* n = nodeByPath(base.c_str());
-	SymmCipher key;
-	string attrstring;
-	byte buf[Node::FOLDERNODEKEYLENGTH];
-	NewNode* newnode = new NewNode[1];
-
-	// set up new node as folder node
-	newnode->source = NEW_NODE;
-	newnode->type = FOLDERNODE;
-	newnode->nodehandle = 0;
-	newnode->mtime = newnode->ctime = time(NULL);
-	newnode->parenthandle = UNDEF;
-
-	// generate fresh random key for this folder node
-	PrnGen::genblock(buf,Node::FOLDERNODEKEYLENGTH);
-	newnode->nodekey.assign((char*)buf,Node::FOLDERNODEKEYLENGTH);
-	key.setkey(buf);
-
-	// generate fresh attribute object with the folder name
-	AttrMap attrs;
-	attrs.map['n'] = newname;
-
-	// JSON-encode object and encrypt attribute string
-	attrs.getjson(&attrstring);
-	client->makeattr(&key,&newnode->attrstring,attrstring.c_str());
-
-	// add the newly generated folder node
-	client->putnodes(n->nodehandle,newnode,1);
-	{
-
-		engine_mutex.unlock();
-		putnodes_ret = 0;
-		std::unique_lock<std::mutex> lk(cvm);
-
-		cv.wait(lk, [this] {return putnodes_ret;});
-	}
-	if(putnodes_ret < 0)
-		return -1;
-	return 0;
+	
 }
 int MegaFuseModel::unlink(std::string filename)
 {

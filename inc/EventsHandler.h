@@ -18,7 +18,7 @@ class EventsHandler
 {
 
 	public:
-	enum event{NONE,LOGIN_RESULT,USERS_UPDATED,NODE_UPDATED,NODE_REMOVED,UNLINK_RESULT,UPLOAD_COMPLETE};
+	enum event{NONE,LOGIN_RESULT,USERS_UPDATED,NODE_UPDATED,NODE_REMOVED,UNLINK_RESULT,UPLOAD_COMPLETE,PUTNODES_RESULT};
 	
 	void addListener(EventsListener*,event);
 	void removeListener(EventsListener*, event);

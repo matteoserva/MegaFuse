@@ -39,16 +39,19 @@ class MegaFuseModel : public DemoApp
     typedef std::map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
 public:
-	MegaFuseModel(EventsHandler &);
+	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
+	std::mutex &engine_mutex;
+	Node* nodeByPath(std::string path);
+	    std::pair<std::string,std::string> splitPath(std::string);
+
 private:
 	EventsHandler &eh;
-    static void event_loop(MegaFuseModel* megaFuse);
+    //static void event_loop(MegaFuseModel* megaFuse);
     std::thread event_loop_thread;
-    std::mutex engine_mutex;
+    
     std::mutex api_mutex;
     byte pwkey[SymmCipher::KEYLENGTH];
-    std::pair<std::string,std::string> splitPath(std::string);
-    Node* nodeByPath(std::string path);
+    
     Node* childNodeByName(Node *p,std::string name);
 	bool chunksAvailable(std::string filename,int startOffset,int size);
     public:

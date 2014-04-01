@@ -10,12 +10,8 @@ void MegaFuseModel::users_updated(User** u, int count)
 void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 {
 	delete[] nn;
-
-	{
-		std::lock_guard<std::mutex> lk(cvm);
-		putnodes_ret  = (e)?-1:1;
-	}
-	cv.notify_one();
+	eh.notifyEvent(EventsHandler::PUTNODES_RESULT,(e)?-1:1);
+	
 }
 
 void MegaFuseModel::transfer_failed(int td,  error e)

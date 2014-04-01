@@ -406,12 +406,11 @@ void term_echo(int echo)
 int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
 
 
-#include "Config.h"
-#include "EventsHandler.h"
+
 char *arg[] = {"megafuse","-d","/tmp"};
 char mountpoint[256];
 
-
+#include "Config.h"
 
 int main(int argc, char **argv)
 {
@@ -425,25 +424,20 @@ int main(int argc, char **argv)
 	mkdir(dbpath.c_str(),0700);
 	chdir(dbpath.c_str());
 	
-	EventsHandler eh;
-	MegaFuseModel megaFuseModel(eh);
-	client = new MegaClient(&megaFuseModel,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
-	//megacli();
-	megaFuseModel.start();
-	if(!megaFuseModel.login(Config::getInstance()->USERNAME.c_str(),Config::getInstance()->PASSWORD.c_str()))
+	MegaFuse mf;
+
+	if(!mf.login())
     {
         printf("login failed. exiting...\n");
         exit(1);
     }
-    printf("login successful\n");
-    usleep(500000);
+   
 
 
     strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
     arg[2] = mountpoint;
 
 
-	MegaFuse mf(&megaFuseModel);
 	if(Config::getInstance()->fuseindex > -1)
 	{
 		unsigned int fuseargs = argc + 3 -Config::getInstance()->fuseindex;

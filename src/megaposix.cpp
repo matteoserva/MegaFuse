@@ -403,12 +403,10 @@ void term_echo(int echo)
 		tcsetattr(0,TCSANOW,&new_settings);
 	}
 }
-int megafuse_mainpp(int argc,char**argv,MegaFuse* mf);
+int megafuse_mainpp(int argc,char **argv,MegaFuse* mf);
 
 
 
-char *arg[] = {"megafuse","-d","/tmp"};
-char mountpoint[256];
 
 #include "Config.h"
 
@@ -432,29 +430,24 @@ int main(int argc, char **argv)
         exit(1);
     }
    
-
-
-    strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
-    arg[2] = mountpoint;
-
-
-	if(Config::getInstance()->fuseindex > -1)
-	{
-		unsigned int fuseargs = argc + 3 -Config::getInstance()->fuseindex;
-		char* fuseargv[fuseargs];
-		printf("argc %d fuseargs %d\n",argc,fuseargs);
-
-		fuseargv[0] = "megafuse";
-		fuseargv[1] = "-d";
-		strcpy(mountpoint,Config::getInstance()->MOUNTPOINT.c_str());
-		fuseargv[2] = mountpoint;
-		for(int i = 0; i < fuseargs -3 ; i++)
-			fuseargv[3+i] = argv[i + Config::getInstance()->fuseindex];
-		megafuse_mainpp(fuseargs,fuseargv,&mf);
-
-	}
+	std::vector<std::string> fuseArguments;
+	fuseArguments.push_back("megafuse");
+	fuseArguments.push_back("-d");
+	if(Config::getInstance()->MOUNTPOINT != "")
+		fuseArguments.push_back(Config::getInstance()->MOUNTPOINT);
 	else
-		megafuse_mainpp(3,arg,&mf);
+		fuseArguments.push_back("/tmp");
+	for(int i = Config::getInstance()->fuseindex;i<argc && i >= 0;++i)
+			fuseArguments.push_back(argv[i]);
+	
+	char * fuseArgv[fuseArguments.size()];
+	for(int i = 0;i < fuseArguments.size();i++)
+		fuseArgv[i] = strdup(fuseArguments[i].c_str());
+
+
+	
+	
+	megafuse_mainpp(fuseArguments.size(),fuseArgv,&mf);
 
 
 }

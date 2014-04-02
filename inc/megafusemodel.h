@@ -93,7 +93,7 @@ private:
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);
-    int readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi);
+    std::set<std::string> readdir(const char *path);
     int getAttr(const char *path, struct stat *stbuf);
     int release(const char *path, struct fuse_file_info *fi);
     int mkdir(const char * path, mode_t mode);

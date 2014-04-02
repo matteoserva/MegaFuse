@@ -161,8 +161,20 @@ int MegaFuse::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t
 	if(!(n->type == FOLDERNODE || n->type == ROOTNODE))
 		return -EIO;
 		
+	filler(buf, ".", NULL, 0);
+	filler(buf, "..", NULL, 0);
 	
-	return model->readdir(path,buf,filler,offset,fi);
+	std::set<std::string> names = model->readdir(path);
+	
+	for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
+				names.insert((*it)->displayname());
+	for(auto it = names.begin();it != names.end();++it)
+		filler(buf,it->c_str(),NULL,0);
+	
+	
+	
+	
+	return 0;
 }
 
 

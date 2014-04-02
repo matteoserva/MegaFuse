@@ -47,27 +47,9 @@ bool MegaFuseModel::login(std::string username, std::string password)
 		return true;
 }
 
-int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,off_t offset, struct fuse_file_info *fi)
+std::set<std::string> MegaFuseModel::readdir(const char *path)
 {
-	std::lock_guard<std::mutex>lock(api_mutex);
-	std::lock_guard<std::mutex>lockE(engine_mutex);
-	std::cout << path <<std::endl;
-
-	Node* n = nodeByPath(path);
-	if(!n) {
-		return -EIO;
-	}
-	if(!(n->type == FOLDERNODE || n->type == ROOTNODE))
-		return -EIO;
-
-	filler(buf, ".", NULL, 0);
-	filler(buf, "..", NULL, 0);
 	std::set<std::string> names;
-		for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
-			{
-				names.insert((*it)->displayname());
-			}
-	
 
 	auto p = splitPath(path);
 	std::string p2 = p.first;
@@ -77,11 +59,9 @@ int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,o
 		if(namePair.first == std::string(path) && it->second.status != file_cache_row::INVALID)
 			names.insert(namePair.second.c_str());
 	}
-	for(auto it =names.begin();it != names.end();++it)
-		filler(buf, it->c_str(), NULL, 0);
+	
 
-
-	return 0;
+	return names;
 }
 
 

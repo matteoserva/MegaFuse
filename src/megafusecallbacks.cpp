@@ -347,14 +347,19 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 
 	std::string remotename = "";
 
-	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
-	if(it == file_cache.end()) {
+	
+	if(findCacheByTransfer(td,file_cache_row::UPLOADING ) != file_cache.end()) {
 		cout << '\r'<<"UPLOAD TD " << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" ;
 
 		fflush(stdout);
 		return;
 	}
-
+	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	if(it == file_cache.end())
+	{
+		client->tclose(td);
+		return;
+	}
 	
 	
 

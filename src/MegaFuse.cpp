@@ -152,6 +152,16 @@ int MegaFuse::read(const char* path, char* buf, size_t size, off_t offset, fuse_
 
 int MegaFuse::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, fuse_file_info* fi)
 {
+	std::lock_guard<std::mutex>lockE(engine_mutex);
+
+	Node* n = model->nodeByPath(path);
+	if(!n) {
+		return -EIO;
+	}
+	if(!(n->type == FOLDERNODE || n->type == ROOTNODE))
+		return -EIO;
+		
+	
 	return model->readdir(path,buf,filler,offset,fi);
 }
 

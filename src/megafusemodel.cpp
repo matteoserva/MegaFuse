@@ -10,7 +10,7 @@
 
 
 
-file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false)
+file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false),handle(0)
 {
 	localname = tmpnam(NULL);
 	tmpname = tmpnam(NULL);
@@ -74,7 +74,7 @@ int MegaFuseModel::readdir(const char *path, void *buf, fuse_fill_dir_t filler,o
 	for(auto it = file_cache.cbegin(); it != file_cache.cend(); ++it)
 	{
 		auto namePair = splitPath(it->first);
-		if(namePair.first == std::string(path))
+		if(namePair.first == std::string(path) && it->second.status != file_cache_row::INVALID)
 			names.insert(namePair.second.c_str());
 	}
 	for(auto it =names.begin();it != names.end();++it)
@@ -317,10 +317,13 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	auto it = file_cache.begin();
 	{
-		std::lock_guard<std::mutex>lock(engine_mutex);
+		std::unique_lock<std::mutex> lock(engine_mutex);
 		it = file_cache.find(std::string(path));
 		it->second.n_clients--;
+		
 		if(!it->second.n_clients && it->second.modified) {
+				Node *oldNode = nodeByPath(it->first);
+
 			auto target = splitPath(it->first);
 			Node *n = nodeByPath(target.first);
 			//if(target.second[0] == '.')
@@ -341,16 +344,32 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 				handle uh = client->uploadhandle(td);
 				client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
 			}
+			
+			
+			
+			
+			if(it->second.status ==file_cache_row::UPLOADING)
+			{
+				EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
+				EventsListener el2(eh,EventsHandler::NODE_UPDATED);
+				lock.unlock();
+				auto l_ress = el.waitEvent();
+				
+				auto l_res = el2.waitEvent();
+				if(oldNode)
+				{
+					lock.lock();
+					client->unlink(oldNode);
+					lock.unlock();
+				}
+			
+			}
+			
+			
+				
 		}
 	}
-
-	if(it->second.status ==file_cache_row::UPLOADING)
-	{
-		{EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
-		auto l_res = el.waitEvent();}
-		{EventsListener el(eh,EventsHandler::NODE_UPDATED);
-		auto l_res = el.waitEvent();}
-	}
+	
 	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 
 
@@ -447,13 +466,13 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 
 	//auto path = splitPath(std::string(p));
-
+	Node *n;
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 
 		
 
-		Node *n = nodeByPath(p);
+		n = nodeByPath(p);
 
 		if(file_cache.find(path) != file_cache.end()) {
 			auto it = file_cache.find(std::string(p));
@@ -480,8 +499,9 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 		std::lock_guard<std::mutex>lock(engine_mutex);
 
 		it->second.n_clients++;
+		it->second.handle = n->nodehandle;
 	}
-
+	
 
 
 	return 0;
@@ -616,42 +636,25 @@ int MegaFuseModel::unlink(std::string filename)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	printf("-------------unlinking %s\n",filename.c_str());
-
-	{
-		std::lock_guard<std::mutex>lock(engine_mutex);
-		Node *n = nodeByPath(filename.c_str());
-		if(!n)
-			printf("file to unlink not found in MEGA\n");
+	if(engine_mutex.try_lock()) {
+		printf("mutex error in model::unlink\n");
+		abort();
+	}
 		auto it = file_cache.find(filename);
 		
-		if(!n && it == file_cache.end())
+		if(it == file_cache.end())
 			return -ENOENT;
 		
-		if(it != file_cache.end() && it->second.n_clients > 0)
-			return -EBUSY;
-			
-		if(it != file_cache.end() && it->second.td > -1)
+		
+		
+		if( it->second.td > -1)
 				client->tclose(it->second.td);
-		if(it != file_cache.end())
-		{
+				
+		it->second.status = file_cache_row::INVALID;
+		if( it->second.n_clients <= 0)
 			eraseCacheRow(it);
-			
-		}
-		
-		if(!n)
-			return 0;
-			
-		error e = client->unlink(n);
-		if(e)
-			return -ENOENT;
-	}
-	{
-		EventsListener el(eh,EventsHandler::UNLINK_RESULT);
-		auto l_res = el.waitEvent();
-		if(l_res.result < 0)
-			return -EIO;
-		return 0;
-	}
+	return 0;
+
 
 
 }

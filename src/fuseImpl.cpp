@@ -11,29 +11,32 @@
 
 
 static MegaFuse* megaFuse;
+#include <mutex>
 
-
-
+static std::mutex api_mutex;
 
 int hello_write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
-
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->write(path,buf,size,offset,fi);
 }
 
 int hello_getattr(const char *path, struct stat *stbuf)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->getAttr(path,stbuf);
 }
 
 int hello_open(const char *path, struct fuse_file_info *fi)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->open(path,fi);
 }
 
 int hello_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
 	//int s = pread(fi->fh,buf,size,offset);
 
 	return megaFuse->read(path,buf,size,offset,fi);
@@ -41,25 +44,30 @@ int hello_read(const char *path, char *buf, size_t size, off_t offset,
 
 int hello_rename(const char * src, const char *dst)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->rename(src,dst);
 }
 int hello_unlink(const char *path)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->unlink(path);
 }
 int hello_release(const char *path, struct fuse_file_info *fi)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->release(path,fi);
 }
 
 
 int hello_mkdir(const char * path, mode_t mode)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->mkdir(path,mode);
 
 }
 int hello_create(const char *path, mode_t mode, struct fuse_file_info * fi)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
     return megaFuse->create(path,mode,fi);
 }
 
@@ -68,6 +76,7 @@ int hello_create(const char *path, mode_t mode, struct fuse_file_info * fi)
 int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi)
 {
+	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->readdir(path,buf,filler,offset,fi);
 }
 

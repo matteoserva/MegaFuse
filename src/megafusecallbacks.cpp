@@ -11,7 +11,7 @@ void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 {
 	delete[] nn;
 	eh.notifyEvent(EventsHandler::PUTNODES_RESULT,(e)?-1:1);
-	
+
 }
 
 void MegaFuseModel::transfer_failed(int td,  error e)
@@ -20,14 +20,13 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 	last_error = e;
 	client->tclose(td);
 	auto it = findCacheByTransfer(td, file_cache_row::UPLOADING);
-	if(it == file_cache.end())
-	{
+	if(it == file_cache.end()) {
 		it->second.status = file_cache_row::AVAILABLE;
 		it->second.td = -1;
 	}
 	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
-	
-	
+
+
 	//eh.notifyEvent(EventsHandler::NODE_UPDATED,-1);
 	//  upload_lock.unlock();
 }
@@ -44,72 +43,68 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 
 	//DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
 	auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
-	if(it == file_cache.end())
-	{
+	if(it == file_cache.end()) {
 		client->tclose(td);
 		return;
 	}
-		
+
 	printf("upload riuscito\n");
 
-		auto sPath = splitPath(it->first);
-		
-		Node *target = nodeByPath(sPath.first);
-		if(!target)
-		{
-			cout << "Upload target folder inaccessible, using /" << endl;
-			target = client->nodebyhandle(client->rootnodes[0]);
-		}
-		/*if (!putf->targetuser.size() && !client->nodebyhandle(putf->target)) {
-			cout << "Upload target folder inaccessible, using /" << endl;
-			putf->target = client->rootnodes[0];
-		}*/
+	auto sPath = splitPath(it->first);
 
-		NewNode* newnode = new NewNode[1];
+	Node *target = nodeByPath(sPath.first);
+	if(!target) {
+		cout << "Upload target folder inaccessible, using /" << endl;
+		target = client->nodebyhandle(client->rootnodes[0]);
+	}
+	/*if (!putf->targetuser.size() && !client->nodebyhandle(putf->target)) {
+		cout << "Upload target folder inaccessible, using /" << endl;
+		putf->target = client->rootnodes[0];
+	}*/
 
-		// build new node
-		newnode->source = NEW_UPLOAD;
+	NewNode* newnode = new NewNode[1];
 
-		// upload handle required to retrieve/include pending file attributes
-		newnode->uploadhandle = ulhandle;
+	// build new node
+	newnode->source = NEW_UPLOAD;
 
-		// reference to uploaded file
-		memcpy(newnode->uploadtoken,ultoken,sizeof newnode->uploadtoken);
+	// upload handle required to retrieve/include pending file attributes
+	newnode->uploadhandle = ulhandle;
 
-		// file's crypto key
-		newnode->nodekey.assign((char*)filekey,Node::FILENODEKEYLENGTH);
-		newnode->mtime = newnode->ctime = time(NULL);
-		newnode->type = FILENODE;
-		newnode->parenthandle = UNDEF;
+	// reference to uploaded file
+	memcpy(newnode->uploadtoken,ultoken,sizeof newnode->uploadtoken);
 
-		AttrMap attrs;
-		
-		MegaClient::unescapefilename(&sPath.second);
+	// file's crypto key
+	newnode->nodekey.assign((char*)filekey,Node::FILENODEKEYLENGTH);
+	newnode->mtime = newnode->ctime = time(NULL);
+	newnode->type = FILENODE;
+	newnode->parenthandle = UNDEF;
 
-		attrs.map['n'] = sPath.second;
-		std::string localname = it->second.localname;
-		attrs.getjson(&localname);
+	AttrMap attrs;
 
-		client->makeattr(key,&newnode->attrstring,localname.c_str());
+	MegaClient::unescapefilename(&sPath.second);
 
+	attrs.map['n'] = sPath.second;
+	std::string localname = it->second.localname;
+	attrs.getjson(&localname);
 
-		Node *toBeDeleted = nodeByPath(it->first);
-		if(toBeDeleted)
-			client->unlink(toBeDeleted);
+	client->makeattr(key,&newnode->attrstring,localname.c_str());
 
 
-		/*if (putf->targetuser.size()) {
-			cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
-			client->putnodes(putf->targetuser.c_str(),newnode,1);
-		} else*/ client->putnodes(target->nodehandle,newnode,1);
 
-		printf("ulhandle %lx, nodehandle %lx\n",ulhandle,newnode->nodehandle);
-		
-		it->second.td = -1;
-		it->second.modified = false;
 
+
+	/*if (putf->targetuser.size()) {
+		cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
+		client->putnodes(putf->targetuser.c_str(),newnode,1);
+	} else*/ client->putnodes(target->nodehandle,newnode,1);
+
+	printf("ulhandle %lx, nodehandle %lx\n",ulhandle,newnode->nodehandle);
+
+	it->second.td = -1;
+	it->second.modified = false;
+	it->second.status = file_cache_row::AVAILABLE;
 	client->tclose(td);
-	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
+	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,1);
 
 
 }
@@ -124,46 +119,70 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 }
 
+std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
+{
+	for(auto it = file_cache.begin();it != file_cache.end();++it)
+	{
+		if(it->second.handle == h)
+			return it;
+		
+	}
+	return file_cache.end();
+	
+	
+}
+
 void MegaFuseModel::nodes_updated(Node** n, int c)
 {
 	DemoApp::nodes_updated(n,c);
-	
+
 	if(!n)
 		return;
 
-	for(int i = 0; i<c; i++)
-	{	
-			
+	for(int i = 0; i<c; i++) {
+		bool removed = false;;
 		Node * nd = n[i];
 		std::string fullpath = std::string(nd->displayname());
-		while(nd->parent && nd->parent->type == FOLDERNODE)
-		{
+		while(nd->parent && nd->parent->type == FOLDERNODE) {
 			fullpath = std::string(nd->parent->displayname()) + "/" + fullpath;
 			nd = nd->parent;
 		}
-		if(nd->parent->type == ROOTNODE)
-		fullpath = "/" + fullpath;
-		else
+		if(nd->parent->type == ROOTNODE) {
+			fullpath = "/" + fullpath;
+		} else {
 			fullpath = "//" + fullpath;
+			removed = true;
+		}
+		removed = removed || n[i]->removed;
+
 		printf("fullpath %s\n",fullpath.c_str());
 		auto it = file_cache.find(fullpath);
-		if(it == file_cache.end())
-			continue;
-		if(!(n[i]->removed)) {
-		
-			if(it->second.status !=file_cache_row::UPLOADING)
-				continue;
+		auto currentCache = findCacheByHandle(n[i]->nodehandle);
+		if( !removed && currentCache != file_cache.end() && fullpath != currentCache->first) {
+			//the handle is in cache
 			
-			{
-				std::lock_guard<std::mutex> lk(cvm);
-				it->second.status = file_cache_row::AVAILABLE;
-			}
-			cv.notify_all();
-			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
+			printf("rename detected from %s to %s\n",currentCache->first.c_str(),fullpath.c_str());
+			
 		}
+		else if(!removed && it!= file_cache.end())
+		{
+			printf("new file?\n");
+			it->second.handle = n[i]->nodehandle;
+			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
+			
+		}
+		else if(removed && currentCache != file_cache.end())
+		{
+			printf("unlink detected, %s\n",currentCache->first.c_str());
+			unlink(currentCache->first);
+			
+		}
+
+		
 		
 	}
 }
+
 void MegaFuseModel::topen_result(int td, error e)
 {
 
@@ -184,7 +203,7 @@ void MegaFuseModel::unlink_result(handle h, error e)
 	printf("unlink eseguito\n");
 	int unlink_ret  = (e)?-1:1;
 	eh.notifyEvent(EventsHandler::UNLINK_RESULT,unlink_ret);
-	
+
 	//unlink_lock.unlock();
 }
 // topen() succeeded (download only)
@@ -406,7 +425,7 @@ void MegaFuseModel::login_result(error e)
 {
 	printf("risultato arrivato\n");
 	int login_ret = (e)? -1:1;
-	
+
 	if(!e)
 		client->fetchnodes();
 	eh.notifyEvent(EventsHandler::LOGIN_RESULT,login_ret);

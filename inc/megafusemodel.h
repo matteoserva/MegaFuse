@@ -21,7 +21,7 @@ struct file_cache_row
     int startOffset;
     bool modified;
 	std::vector<bool> availableChunks;
-
+	uint64_t handle;
     file_cache_row();
     ~file_cache_row();
 };
@@ -64,7 +64,9 @@ private:
     ~MegaFuseModel();
     void check_cache();
     std::map <std::string,file_cache_row>::iterator eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
-    /*callbacks*/
+    std::map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
+	
+	/*callbacks*/
 
     error last_error;
     int result;

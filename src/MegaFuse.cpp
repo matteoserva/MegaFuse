@@ -172,6 +172,26 @@ int MegaFuse::write(const char* path, const char* buf, size_t size, off_t offset
 }
 int MegaFuse::unlink(const char* s)
 {
-	return model->unlink(s);
+	{
+		std::lock_guard<std::mutex>lock(engine_mutex);
+		Node *n = model->nodeByPath(s);
+	    if(!n)
+			return model->unlink(s);
+
+		error e = client->unlink(n);
+		if(e)
+			return -EINVAL;
+	}
+	{
+		EventsListener el(eh,EventsHandler::UNLINK_RESULT);
+		auto l_res = el.waitEvent();
+		if(l_res.result < 0)
+			return -EIO;
+		return 0;
+	}
+	
+	
+	
+	return 0;
 	
 }

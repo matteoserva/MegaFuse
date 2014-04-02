@@ -102,7 +102,7 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 
 	it->second.td = -1;
 	it->second.modified = false;
-	it->second.status = file_cache_row::AVAILABLE;
+	
 	client->tclose(td);
 	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,1);
 
@@ -161,13 +161,25 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 		if( !removed && currentCache != file_cache.end() && fullpath != currentCache->first) {
 			//the handle is in cache
 			
-			printf("rename detected from %s to %s\n",currentCache->first.c_str(),fullpath.c_str());
+			
+			
+			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
+			rename(currentCache->first.c_str(),fullpath.c_str());
+		}
+		else if(!removed && it!= file_cache.end() && it->second.status == file_cache_row::UPLOADING)
+		{
+			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
+			it->second.handle = n[i]->nodehandle;
+			it->second.status = file_cache_row::AVAILABLE;
+			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
 			
 		}
+		
 		else if(!removed && it!= file_cache.end())
 		{
-			printf("new file?\n");
+			printf("file overwritten. nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
+			it->second.status = file_cache_row::INVALID;
 			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
 			
 		}

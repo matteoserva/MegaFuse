@@ -14,7 +14,7 @@
 #include "MegaFuse.h"
 MegaFuse::MegaFuse()
 {
-	
+
 	model = new MegaFuseModel(eh,engine_mutex);
 	client = new MegaClient(model,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	event_loop_thread = std::thread(event_loop,this);
@@ -35,68 +35,66 @@ bool MegaFuse::login()
 	std::string username = Config::getInstance()->USERNAME.c_str();
 	std::string password = Config::getInstance()->PASSWORD.c_str();
 	model->engine_mutex.lock();
-		client->pw_key(password.c_str(),pwkey);
-		client->login(username.c_str(),pwkey,1);
+	client->pw_key(password.c_str(),pwkey);
+	client->login(username.c_str(),pwkey,1);
 	model->engine_mutex.unlock();
-		{
-			EventsListener el(eh,EventsHandler::LOGIN_RESULT);
-			EventsListener eu(eh,EventsHandler::USERS_UPDATED);
-			auto l_res = el.waitEvent();
-			if (l_res.result <0)
-				return false;
-			eu.waitEvent();
-		}
+	{
+		EventsListener el(eh,EventsHandler::LOGIN_RESULT);
+		EventsListener eu(eh,EventsHandler::USERS_UPDATED);
+		auto l_res = el.waitEvent();
+		if (l_res.result <0)
+			return false;
+		eu.waitEvent();
+	}
 	return true;
 }
 
 int MegaFuse::create(const char* path, mode_t mode, fuse_file_info* fi)
 {
+	std::lock_guard<std::mutex>lock2(engine_mutex);
 	return model->create(path,mode,fi);
 }
 
 int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 {
-	
-	int result = model->getAttr(path,stbuf);
-	if(result >= 0)
+	std::lock_guard<std::mutex>lock2(engine_mutex);
+	if(model->getAttr(path,stbuf) == 0) //file locally cached
 		return 0;
-	
-	{
-		std::lock_guard<std::mutex>lock2(model->engine_mutex);
+
 
 		Node *n = model->nodeByPath(path);
 		if(!n)
 			return -ENOENT;
 		switch (n->type) {
-			case FILENODE:
-				printf("filenode richiesto\n");
-				stbuf->st_mode = S_IFREG | 0666;
-				stbuf->st_nlink = 1;
-				stbuf->st_size = n->size;
-				stbuf->st_mtime = n->ctime;
-				break;
+		case FILENODE:
+			printf("filenode richiesto\n");
+			stbuf->st_mode = S_IFREG | 0666;
+			stbuf->st_nlink = 1;
+			stbuf->st_size = n->size;
+			stbuf->st_mtime = n->ctime;
+			break;
 
-			case FOLDERNODE:
-			case ROOTNODE:
-				printf("rootnode richiesto\n");
-				stbuf->st_mode = S_IFDIR | 0777;
-				stbuf->st_nlink = 1;
-				stbuf->st_size = 4096;
-				stbuf->st_mtime = n->ctime;
-				break;
-			default:
-				printf("einval nodo\n");
-				return -EINVAL;
-			}
-		
-	}
+		case FOLDERNODE:
+		case ROOTNODE:
+			printf("rootnode richiesto\n");
+			stbuf->st_mode = S_IFDIR | 0777;
+			stbuf->st_nlink = 1;
+			stbuf->st_size = 4096;
+			stbuf->st_mtime = n->ctime;
+			break;
+		default:
+			printf("einval nodo\n");
+			return -EINVAL;
+		}
+
+	
 	return 0;
 }
 
 int MegaFuse::mkdir(const char* p, mode_t mode)
 {
 	std::unique_lock<std::mutex> l(engine_mutex);
-	
+
 
 	auto path = model->splitPath(p);
 	std::string base = path.first;
@@ -129,15 +127,15 @@ int MegaFuse::mkdir(const char* p, mode_t mode)
 	client->makeattr(&key,&newnode->attrstring,attrstring.c_str());
 
 	// add the newly generated folder node
-	
+
 	EventsListener el(eh,EventsHandler::PUTNODES_RESULT);
-		
+
 	client->putnodes(n->nodehandle,newnode,1);
 	l.unlock();
 	auto l_res = el.waitEvent();
 	if(l_res.result < 0)
-			return -EIO;
-		return 0;
+		return -EIO;
+	return 0;
 }
 
 int MegaFuse::open(const char* path, fuse_file_info* fi)
@@ -160,20 +158,20 @@ int MegaFuse::readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t
 	}
 	if(!(n->type == FOLDERNODE || n->type == ROOTNODE))
 		return -EIO;
-		
+
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
-	
+
 	std::set<std::string> names = model->readdir(path);
-	
+
 	for (node_list::iterator it = n->children.begin(); it != n->children.end(); it++)
-				names.insert((*it)->displayname());
-	for(auto it = names.begin();it != names.end();++it)
+		names.insert((*it)->displayname());
+	for(auto it = names.begin(); it != names.end(); ++it)
 		filler(buf,it->c_str(),NULL,0);
-	
-	
-	
-	
+
+
+
+
 	return 0;
 }
 
@@ -185,19 +183,57 @@ int MegaFuse::release(const char* path, fuse_file_info* fi)
 
 int MegaFuse::rename(const char* src, const char* dst)
 {
-	return model->rename(src,dst);
+	std::unique_lock<std::mutex>lockE(engine_mutex);
+	Node * n_src = model->nodeByPath(src);
+	Node * n_dst = model->nodeByPath(dst);
+
+	if(n_src)
+	{	
+	auto path = model->splitPath(dst);
+	Node *dstFolder = model->nodeByPath(path.first);
+
+	if(!dstFolder)
+		return -EINVAL;
+
+	if ( client->rename(n_src,dstFolder) != API_OK)
+		return -EIO;
+
+	n_src->attrs.map['n'] = path.second.c_str();
+	if (client->setattr(n_src))
+		return -EIO;
+	}
+	else
+	{
+		if(model->rename(src,dst) < 0)
+			return -ENOENT;
+		
+	}
+	//delete overwritten file
+	if(n_dst && n_dst->type == FILENODE) {
+		EventsListener el(eh,EventsHandler::UNLINK_RESULT);
+		lockE.unlock();
+		client->unlink(n_dst);
+		auto l_res = el.waitEvent();
+	}
+
+
+	return 0;
+
+	
 }
 
 int MegaFuse::write(const char* path, const char* buf, size_t size, off_t offset, fuse_file_info* fi)
 {
+	std::lock_guard<std::mutex>lock2(engine_mutex);
 	return model->write(path,buf,size,offset,fi);
 }
 int MegaFuse::unlink(const char* s)
 {
+	printf("-----------unlink %s\n",s);
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
 		Node *n = model->nodeByPath(s);
-	    if(!n)
+		if(!n)
 			return model->unlink(s);
 
 		error e = client->unlink(n);
@@ -211,9 +247,9 @@ int MegaFuse::unlink(const char* s)
 			return -EIO;
 		return 0;
 	}
-	
-	
-	
+
+
+
 	return 0;
-	
+
 }

@@ -24,8 +24,9 @@ you can pass additional options to the fuse module via the command line option -
 	MegaFuse -f -o allow_other -o uid=1000
 
 after an abnormal termination you might need to clear the mountpoint:
-
-	# umount $MOUNTPOINT
+	
+	$ fusermount -u $MOUNTPOINT
+	or # umount $MOUNTPOINT
 
 I'm currently accepting donations via paypal at the address of my main project
 

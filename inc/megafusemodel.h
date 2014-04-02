@@ -55,10 +55,7 @@ private:
     Node* childNodeByName(Node *p,std::string name);
 	bool chunksAvailable(std::string filename,int startOffset,int size);
     public:
-    bool start();
-    bool stop();
 	int enqueueDownload(std::string filename,int startOffset);
-    bool login(std::string username, std::string password);
     int unlink(std::string);
     std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuseModel();
@@ -96,7 +93,6 @@ private:
     std::set<std::string> readdir(const char *path);
     int getAttr(const char *path, struct stat *stbuf);
     int release(const char *path, struct fuse_file_info *fi);
-    int mkdir(const char * path, mode_t mode);
     int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
     int create(const char *path, mode_t mode, struct fuse_file_info * fi);
     int write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi);

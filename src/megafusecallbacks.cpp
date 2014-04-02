@@ -102,7 +102,7 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 
 	it->second.td = -1;
 	it->second.modified = false;
-	
+
 	client->tclose(td);
 	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,1);
 
@@ -121,15 +121,14 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
 {
-	for(auto it = file_cache.begin();it != file_cache.end();++it)
-	{
+	for(auto it = file_cache.begin(); it != file_cache.end(); ++it) {
 		if(it->second.handle == h)
 			return it;
-		
+
 	}
 	return file_cache.end();
-	
-	
+
+
 }
 
 void MegaFuseModel::nodes_updated(Node** n, int c)
@@ -160,38 +159,33 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 		auto currentCache = findCacheByHandle(n[i]->nodehandle);
 		if( !removed && currentCache != file_cache.end() && fullpath != currentCache->first) {
 			//the handle is in cache
-			
-			
-			
+
+
+
 			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
 			rename(currentCache->first.c_str(),fullpath.c_str());
-		}
-		else if(!removed && it!= file_cache.end() && it->second.status == file_cache_row::UPLOADING)
-		{
+		} else if(!removed && it!= file_cache.end() && it->second.status == file_cache_row::UPLOADING) {
 			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
 			it->second.status = file_cache_row::AVAILABLE;
 			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
-			
+
 		}
-		
-		else if(!removed && it!= file_cache.end())
-		{
+
+		else if(!removed && it!= file_cache.end()) {
 			printf("file overwritten. nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
 			it->second.status = file_cache_row::INVALID;
 			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
-			
-		}
-		else if(removed && currentCache != file_cache.end())
-		{
+
+		} else if(removed && currentCache != file_cache.end()) {
 			printf("unlink detected, %s\n",currentCache->first.c_str());
 			unlink(currentCache->first);
-			
+
 		}
 
-		
-		
+
+
 	}
 }
 
@@ -350,7 +344,6 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime starttime)
 {
 
-	static time_t last = time(NULL);
 
 	std::string remotename = "";
 
@@ -362,11 +355,8 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 		return;
 	}
 
-	if(time(NULL) - last >= 1) {
-		cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
-		cout << "scaricato fino al byte " <<(it->second.startOffset+bytes) << " di: "<<size<<endl;
-		last = time(NULL);
-	}
+	
+	
 
 	int startChunk = it->second.startOffset / CHUNKSIZE;
 
@@ -389,7 +379,6 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 		try {
 			if(!it->second.availableChunks[i]) {
 				it->second.availableChunks[i] = true;
-				printf("blocco %d salvato\n",i);
 				void *buf = malloc(CHUNKSIZE);
 				int fd;
 				fd = ::open(it->second.tmpname.c_str(),O_RDONLY);
@@ -410,6 +399,26 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 		}
 	}
 
+
+	/*	cout << remotename << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" << endl;
+		cout << "scaricato fino al byte " <<(it->second.startOffset+bytes) << " di: "<<size<<endl;
+    */
+	{
+		std::string rigaDownload = "\r[";
+		
+		int numero = it->second.availableChunks.size();
+		for(int i = 0;i<50;i++)
+		{
+			if(it->second.availableChunks[i*numero/50])
+				rigaDownload.append("#");
+			else
+				rigaDownload.append("-");
+		}
+		rigaDownload.append("] ");
+		std::cout << rigaDownload << size/1024/1024 << " MB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s             ";
+	}
+	
+	
 	cv.notify_all();
 	std::this_thread::yield();
 

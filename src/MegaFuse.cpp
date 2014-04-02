@@ -62,32 +62,32 @@ int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 		return 0;
 
 
-		Node *n = model->nodeByPath(path);
-		if(!n)
-			return -ENOENT;
-		switch (n->type) {
-		case FILENODE:
-			printf("filenode richiesto\n");
-			stbuf->st_mode = S_IFREG | 0666;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = n->size;
-			stbuf->st_mtime = n->ctime;
-			break;
+	Node *n = model->nodeByPath(path);
+	if(!n)
+		return -ENOENT;
+	switch (n->type) {
+	case FILENODE:
+		printf("filenode richiesto\n");
+		stbuf->st_mode = S_IFREG | 0666;
+		stbuf->st_nlink = 1;
+		stbuf->st_size = n->size;
+		stbuf->st_mtime = n->ctime;
+		break;
 
-		case FOLDERNODE:
-		case ROOTNODE:
-			printf("rootnode richiesto\n");
-			stbuf->st_mode = S_IFDIR | 0777;
-			stbuf->st_nlink = 1;
-			stbuf->st_size = 4096;
-			stbuf->st_mtime = n->ctime;
-			break;
-		default:
-			printf("einval nodo\n");
-			return -EINVAL;
-		}
+	case FOLDERNODE:
+	case ROOTNODE:
+		printf("rootnode richiesto\n");
+		stbuf->st_mode = S_IFDIR | 0777;
+		stbuf->st_nlink = 1;
+		stbuf->st_size = 4096;
+		stbuf->st_mtime = n->ctime;
+		break;
+	default:
+		printf("einval nodo\n");
+		return -EINVAL;
+	}
 
-	
+
 	return 0;
 }
 
@@ -187,26 +187,23 @@ int MegaFuse::rename(const char* src, const char* dst)
 	Node * n_src = model->nodeByPath(src);
 	Node * n_dst = model->nodeByPath(dst);
 
-	if(n_src)
-	{	
-	auto path = model->splitPath(dst);
-	Node *dstFolder = model->nodeByPath(path.first);
+	if(n_src) {
+		auto path = model->splitPath(dst);
+		Node *dstFolder = model->nodeByPath(path.first);
 
-	if(!dstFolder)
-		return -EINVAL;
+		if(!dstFolder)
+			return -EINVAL;
 
-	if ( client->rename(n_src,dstFolder) != API_OK)
-		return -EIO;
+		if ( client->rename(n_src,dstFolder) != API_OK)
+			return -EIO;
 
-	n_src->attrs.map['n'] = path.second.c_str();
-	if (client->setattr(n_src))
-		return -EIO;
-	}
-	else
-	{
+		n_src->attrs.map['n'] = path.second.c_str();
+		if (client->setattr(n_src))
+			return -EIO;
+	} else {
 		if(model->rename(src,dst) < 0)
 			return -ENOENT;
-		
+
 	}
 	//delete overwritten file
 	if(n_dst && n_dst->type == FILENODE) {
@@ -219,7 +216,7 @@ int MegaFuse::rename(const char* src, const char* dst)
 
 	return 0;
 
-	
+
 }
 
 int MegaFuse::write(const char* path, const char* buf, size_t size, off_t offset, fuse_file_info* fi)

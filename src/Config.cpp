@@ -2,7 +2,8 @@
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
-
+#include <termios.h>
+#include <dirent.h>
 using namespace std;
 Config* Config::getInstance()
 {
@@ -70,6 +71,46 @@ bool Config::parseCommandLine(int argc, char**argv)
     }
     return false;
 }
+char * Config::getString(std::string prompt, bool isPassword)
+{
+	static char buffer[STRINGSIZE];
+	std::cout << prompt;
+
+		struct termios oldt, newt;
+		tcgetattr( STDIN_FILENO, &oldt);
+		newt = oldt;
+
+		/*setting the approriate bit in the termios struct*/
+		if(isPassword)
+		newt.c_lflag &= ~(ECHO);          
+
+		/*setting the new bits*/
+		tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+		int i = 0,c;
+		/*reading the password from the console*/
+		while ((c = getchar())!= '\n' && c != EOF && i < STRINGSIZE){
+			buffer[i++] = c;
+		}
+		buffer[i] = '\0';
+
+		/*resetting our old STDIN_FILENO*/ 
+		tcsetattr( STDIN_FILENO, TCSANOW, &oldt);
+		if(isPassword)
+		std::cout <<std::endl;
+		return buffer;	
+}
+
+static int countEntriesInDir(std::string dirname)
+{
+        int n=0;
+        dirent* d;
+        DIR* dir = opendir(dirname.c_str());
+        if (dir == NULL) return -1;
+        while((d = readdir(dir))!=NULL) n++;
+        closedir(dir);
+        return n;
+}
+
 
 void Config::LoadConfig()
 {
@@ -119,9 +160,15 @@ void Config::LoadConfig()
         fclose(fp);
     }
 
+	if(USERNAME == "")
+	    USERNAME = getString("Username (email): ",false);
+	if(PASSWORD == "")
+	    PASSWORD = getString("Enter your password: ",true);
+	while(2 != countEntriesInDir(MOUNTPOINT))
+		MOUNTPOINT = getString("Specify a vailid mountpoint (an empty directory): ",false);
 }
 
-Config::Config():configFile("megafuse.conf"),fuseindex(-1)
+Config::Config():configFile("megafuse.conf"),fuseindex(-1),APPKEY("MEGASDK")
 {
 
 }

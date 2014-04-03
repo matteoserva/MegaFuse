@@ -18,8 +18,12 @@
         private:
         Config();
         std::string configFile;
-
-        void check_variable(int &,std::string value,std::string name);
+		
+		const static unsigned int STRINGSIZE = 250;
+		char * getString(std::string prompt, bool isPassword);
+        
+		
+		void check_variable(int &,std::string value,std::string name);
         void check_variable(std::string &,std::string value,std::string name);
     };
 

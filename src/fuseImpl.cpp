@@ -94,7 +94,7 @@ int hello_chown(const char *a, uid_t u, gid_t g)
 }
 int hello_truncate(const char *a, off_t o)
 {
-	return 0;
+	return megaFuse->truncate(a,o);
 }
 int hello_link(const char *a, const char *b)
 {

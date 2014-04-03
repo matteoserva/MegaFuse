@@ -327,11 +327,11 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	auto sPath = splitPath(p);
 	//if(sPath.second[0] == '.')
 	//return -EINVAL;
-	if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC))) {
+	/*if((fi->flags & O_WRONLY) || ((fi->flags & (O_RDWR | O_TRUNC)) == (O_RDWR | O_TRUNC))) {
 		return create(p,755,fi);
 
 
-	}
+	}*/
 
 
 	printf("flags:%X\n",fi->flags);
@@ -339,7 +339,68 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	std::string path(p);
 
 
-	//auto path = splitPath(std::string(p));
+	std::unique_lock <std::mutex> engine(engine_mutex);
+
+	Node *n = nodeByPath(p);
+	auto it = file_cache.find(path);
+
+	/*files with 0 clients are OK, it's a cache*/
+	bool oldCache = it != file_cache.end() && n && it->second.last_modified < n->mtime;
+	
+	if(oldCache && it->second.n_clients > 0)
+		return -EAGAIN;
+	if(oldCache && it->second.n_clients <= 0)
+	{
+		eraseCacheRow(it);
+		it = file_cache.end();
+	}
+	
+	bool fileExists = n || it != file_cache.end();
+
+	if(!fileExists && !(fi->flags & O_CREAT))
+		return -ENOENT;
+	if(fileExists && (fi->flags & O_CREAT) && (fi->flags & O_EXCL))
+		return -EEXIST;
+
+	if(fi->flags & O_TRUNC || (!fileExists && (fi->flags & O_CREAT)) )
+	{
+		if(file_cache[p].status == file_cache_row::DOWNLOADING) 
+		{
+			client->tclose(file_cache[p].td);
+			file_cache[p].td = -1;
+		}
+		file_cache[p].status = file_cache_row::AVAILABLE;
+		file_cache[p].size=0;
+		file_cache[p].modified=true;
+		file_cache[p].n_clients++;
+
+		truncate(file_cache[p].localname.c_str(), 0);
+		return 0;
+	}
+	
+	if(it != file_cache.end() && it->second.status != file_cache_row::INVALID)
+	{
+		it->second.n_clients++;
+		return 0;
+	}
+	
+	file_cache[p].status = file_cache_row::INVALID;
+	it = file_cache.find(p);
+	engine.unlock();
+	
+	
+	
+	int opend_ret = enqueueDownload(p,0);
+
+	if(opend_ret < 0)
+		return -EIO;
+	
+	engine.lock();
+	it->second.n_clients++;
+	it->second.handle = n->nodehandle;
+	return 0;
+	
+	/*//auto path = splitPath(std::string(p));
 	Node *n;
 	{
 		std::lock_guard<std::mutex>lock(engine_mutex);
@@ -380,46 +441,10 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 
 
-	return 0;
+	return 0;*/
 }
 
 
-
-int MegaFuseModel::create(const char *path, mode_t mode, struct fuse_file_info * fi)
-{
-	std::lock_guard<std::mutex>lock(api_mutex);
-
-	printf("CREATE flags:%X\n",fi->flags);
-	printf("-------requested create %s\n",path);
-	auto p = path;
-
-	if((fi->flags & O_EXCL) && (file_cache.find(p)!= file_cache.end() || nodeByPath(p) != nullptr))
-		return -EEXIST;
-
-	//workaround for dolphin, disable locks completely
-	if((fi->flags & O_EXCL) ) {
-		printf("-----------exclusive file forbidden\n");
-		return -EPERM;
-
-	}
-
-	auto sPath = splitPath(p);
-	//if(sPath.second[0] == '.')
-	//return -EINVAL;
-	if(file_cache[p].status == file_cache_row::DOWNLOADING) {
-		client->tclose(file_cache[p].td);
-		file_cache[p].td = -1;
-	}
-	file_cache[p].status = file_cache_row::AVAILABLE;
-	file_cache[p].size=0;
-	file_cache[p].modified=true;
-	file_cache[p].n_clients++;
-
-	truncate(file_cache[p].localname.c_str(), 0);
-	return 0;
-
-
-}
 
 
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)

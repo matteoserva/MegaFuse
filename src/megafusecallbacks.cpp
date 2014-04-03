@@ -168,6 +168,7 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
 			it->second.status = file_cache_row::AVAILABLE;
+			it->second.last_modified = n[i]->mtime;
 			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
 
 		}

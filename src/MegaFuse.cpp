@@ -51,8 +51,10 @@ bool MegaFuse::login()
 
 int MegaFuse::create(const char* path, mode_t mode, fuse_file_info* fi)
 {
-	std::lock_guard<std::mutex>lock2(engine_mutex);
-	return model->create(path,mode,fi);
+	//std::lock_guard<std::mutex>lock2(engine_mutex);
+	fi->flags = fi->flags |O_CREAT | O_TRUNC | O_WRONLY;
+	printf("----------------CREATE\n");
+	return model->open(path,fi);
 }
 
 int MegaFuse::getAttr(const char* path,struct stat* stbuf)
@@ -90,7 +92,13 @@ int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 
 	return 0;
 }
-
+int MegaFuse::truncate(const char *a,off_t o)
+{
+	fuse_file_info fi;
+	fi.flags = O_TRUNC;
+	if(!open(a,&fi))
+		release(a,&fi);
+}
 int MegaFuse::mkdir(const char* p, mode_t mode)
 {
 	std::unique_lock<std::mutex> l(engine_mutex);

@@ -433,10 +433,9 @@ int main(int argc, char **argv)
 	std::vector<std::string> fuseArguments;
 	fuseArguments.push_back("megafuse");
 	fuseArguments.push_back("-d");
-	if(Config::getInstance()->MOUNTPOINT != "")
+
 		fuseArguments.push_back(Config::getInstance()->MOUNTPOINT);
-	else
-		fuseArguments.push_back("/tmp");
+
 	for(int i = Config::getInstance()->fuseindex;i<argc && i >= 0;++i)
 			fuseArguments.push_back(argv[i]);
 	

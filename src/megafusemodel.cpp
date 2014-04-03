@@ -337,7 +337,10 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	printf("flags:%X\n",fi->flags);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
-
+	
+	//Workaround for kde bug in debian 7
+	if(sPath.second.find(".directory") == 0 && (fi->flags & O_EXCL))
+		return -EPERM;
 
 	std::unique_lock <std::mutex> engine(engine_mutex);
 

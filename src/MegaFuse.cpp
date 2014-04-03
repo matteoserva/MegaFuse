@@ -52,8 +52,9 @@ bool MegaFuse::login()
 int MegaFuse::create(const char* path, mode_t mode, fuse_file_info* fi)
 {
 	//std::lock_guard<std::mutex>lock2(engine_mutex);
-	fi->flags = fi->flags |O_CREAT | O_TRUNC | O_WRONLY;
-	printf("----------------CREATE\n");
+	printf("----------------CREATE flags:%X\n",fi->flags);
+	fi->flags = fi->flags |O_CREAT | O_TRUNC;// | O_WRONLY;
+	
 	return model->open(path,fi);
 }
 

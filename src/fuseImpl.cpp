@@ -100,7 +100,7 @@ int hello_link(const char *a, const char *b)
 {
 	//return megaFuse->rename(b,a);
 	//printf("link %s %s\n",a,b);
-	return -EPERM;
+	return -EMLINK;
 }
 
 int hello_statvfs(const char * a, struct statvfs * stat)

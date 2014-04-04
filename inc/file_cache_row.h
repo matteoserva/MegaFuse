@@ -1,6 +1,6 @@
 #include <string>
 #include <vector>
-
+#include <unordered_map>
 struct file_cache_row
 {
     enum CacheStatus{INVALID,DOWNLOADING,UPLOADING,AVAILABLE,DOWNLOAD_PAUSED};
@@ -22,4 +22,20 @@ struct file_cache_row
 	bool canRead(size_t offset,size_t size);
 	bool chunksAvailable(int startOffset,int size);
 	static int numChunks(size_t pos);
+};
+
+class CacheManager
+{
+	public: //only for now
+	typedef std::unordered_map <std::string,file_cache_row> mapType;
+	mapType file_cache;
+	public:
+	CacheManager();
+	file_cache_row& operator[] (std::string);
+	
+	mapType::iterator find(std::string);
+	mapType::iterator end();
+	mapType::iterator begin();
+	mapType::const_iterator cend();
+	mapType::const_iterator cbegin();
 };

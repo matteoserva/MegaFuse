@@ -119,7 +119,7 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 }
 
-std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
+std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
 {
 	for(auto it = file_cache.begin(); it != file_cache.end(); ++it) {
 		if(it->second.handle == h)
@@ -239,8 +239,8 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 	chmod(tmp.c_str(),S_IWUSR|S_IRUSR);
 	client->dlopen(td,tmp.c_str());
 	printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
-	file_cache[remotename].status = file_cache_row::DOWNLOADING;
-	file_cache[remotename].available_bytes = 0;
+	cacheManager[remotename].status = file_cache_row::DOWNLOADING;
+	cacheManager[remotename].available_bytes = 0;
 	eh.notifyEvent(EventsHandler::TOPEN_RESULT,+1);
 }
 
@@ -261,7 +261,7 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 	//download_lock.unlock();
 }
 
-std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
+std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
 {
 	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
 		if(it->second.status == status && it->second.td == td)

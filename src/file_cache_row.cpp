@@ -3,6 +3,8 @@
 #include <unistd.h>
 
 #include <megaclient.h>
+
+
 file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false),handle(0)
 {
 	localname = tmpnam(NULL);
@@ -58,3 +60,35 @@ int file_cache_row::numChunks(size_t pos)
 	
 	
 }
+
+CacheManager::CacheManager()
+{
+	
+}
+
+file_cache_row& CacheManager::operator[] (std::string s)
+{
+	return file_cache[s];
+	
+}
+
+CacheManager::mapType::iterator CacheManager::find(std::string s)
+{
+	return file_cache.find(s);
+}
+	CacheManager::mapType::iterator CacheManager::end()
+	{
+		return file_cache.end();
+	}
+	CacheManager::mapType::iterator CacheManager::begin()
+	{
+		return file_cache.begin();
+	}
+		CacheManager::mapType::const_iterator CacheManager::cend()
+	{
+		return file_cache.cend();
+	}
+	CacheManager::mapType::const_iterator CacheManager::cbegin()
+	{
+		return file_cache.cbegin();
+	}

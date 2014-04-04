@@ -17,8 +17,9 @@ class MegaFuseCallback : public DemoApp
 class MegaFuseModel : public DemoApp
 {
 	static const int CHUNKSIZE = 128*1024;
+	CacheManager cacheManager;
     typedef std::unordered_map <std::string,file_cache_row> cacheMap;
-    std::map <std::string,file_cache_row> file_cache;
+    std::unordered_map <std::string,file_cache_row> &file_cache;
 public:
 	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
 	std::mutex &engine_mutex;
@@ -38,11 +39,11 @@ private:
     public:
 	int enqueueDownload(std::string filename,int startOffset);
     int unlink(std::string);
-    std::map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
+    std::unordered_map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuseModel();
     void check_cache();
-    std::map <std::string,file_cache_row>::iterator eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
-    std::map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
+    std::unordered_map <std::string,file_cache_row>::iterator eraseCacheRow(std::unordered_map <std::string,file_cache_row>::iterator it);
+    std::unordered_map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
 	int numChunks(m_off_t p);
 	int blockOffset(int pos);
 	/*callbacks*/

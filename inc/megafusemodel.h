@@ -9,7 +9,7 @@
 
 struct file_cache_row
 {
-    enum CacheStatus{INVALID,DOWNLOADING,UPLOADING,AVAILABLE};
+    enum CacheStatus{INVALID,DOWNLOADING,UPLOADING,AVAILABLE,DOWNLOAD_PAUSED};
     std::string localname;
 	std::string tmpname;
     int td;

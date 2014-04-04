@@ -305,7 +305,7 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 		if(td < 0)
 			return -EIO;
 		file_cache[remotename].td = td;
-		if(file_cache[remotename].status != file_cache_row::DOWNLOADING)
+		if(file_cache[remotename].status != file_cache_row::DOWNLOADING && file_cache[remotename].status != file_cache_row::DOWNLOAD_PAUSED)
 			file_cache[remotename].status = file_cache_row::INVALID;
 	}
 	file_cache[remotename].last_modified = n->mtime;
@@ -347,7 +347,10 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 	Node *n = nodeByPath(p);
 	auto it = file_cache.find(path);
-
+if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED)
+	{
+		printf("resuming paused download11\n");
+	}
 	/*files with 0 clients are OK, it's a cache*/
 	bool oldCache = it != file_cache.end() && n && it->second.last_modified < n->mtime;
 	
@@ -382,14 +385,21 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 		return 0;
 	}
 	
-	if(it != file_cache.end() && it->second.status != file_cache_row::INVALID)
+	if(it != file_cache.end() && it->second.status != file_cache_row::INVALID && it->second.status != file_cache_row::DOWNLOAD_PAUSED)
 	{
 		it->second.n_clients++;
 		return 0;
 	}
-	
+	if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED)
+	{
+		printf("resuming paused download\n");
+	}
+	else
+	{
 	file_cache[p].status = file_cache_row::INVALID;
 	it = file_cache.find(p);
+	
+	}
 	engine.unlock();
 	
 	
@@ -404,48 +414,7 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	it->second.handle = n->nodehandle;
 	return 0;
 	
-	/*//auto path = splitPath(std::string(p));
-	Node *n;
-	{
-		std::lock_guard<std::mutex>lock(engine_mutex);
-
-
-
-		n = nodeByPath(p);
-
-		if(file_cache.find(path) != file_cache.end()) {
-			auto it = file_cache.find(std::string(p));
-			if((!n || it->second.last_modified >= n->mtime) && it->second.status != file_cache_row::INVALID) {
-				it->second.n_clients++;
-				return 0;
-			} else if(!it->second.n_clients) {
-				eraseCacheRow(it);
-			} else {
-				printf("\n\n\nstatus %d\n\n",it->second.status);
-				return -EAGAIN;
-			}
-		}
-
-		if(!n)
-			return -ENOENT;
-	}
-
-	int opend_ret = enqueueDownload(p,0);
-
-	if(opend_ret < 0)
-		return -EIO;
-
-	{
-		auto it = file_cache.find(std::string(p));
-		std::lock_guard<std::mutex>lock(engine_mutex);
-
-		it->second.n_clients++;
-		it->second.handle = n->nodehandle;
-	}
-
-
-
-	return 0;*/
+	
 }
 
 

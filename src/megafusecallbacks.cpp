@@ -437,8 +437,9 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 
 	if( it->second.n_clients<=0) {
 		client->tclose(it->second.td);
-		it->second.status =file_cache_row::INVALID;
+		it->second.status =file_cache_row::DOWNLOAD_PAUSED;
 		it->second.td = -1;
+		printf("pausing download\n");
 	}
 
 	//WORKAROUNDS

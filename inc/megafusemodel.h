@@ -34,7 +34,7 @@ private:
     byte pwkey[SymmCipher::KEYLENGTH];
     
     Node* childNodeByName(Node *p,std::string name);
-	bool chunksAvailable(std::string filename,int startOffset,int size);
+	//bool chunksAvailable(std::string filename,int startOffset,int size);
     public:
 	int enqueueDownload(std::string filename,int startOffset);
     int unlink(std::string);

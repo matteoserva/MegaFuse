@@ -241,7 +241,7 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 	return ret;
 }
 
-bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int size)
+/*bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int size)
 {
 	auto it = file_cache.find(std::string(filename));
 	if(it == file_cache.end())
@@ -254,7 +254,7 @@ bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int siz
 	}
 	//printf("chunksavailable da %d a %d, blocchi da %d a %d escluso. riferimento: %d\n",startOffset,startOffset+size,startChunk,endChunk,ChunkedHash::chunkfloor(startOffset));
 	return available;
-}
+}*/
 
 
 int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
@@ -469,13 +469,12 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 	auto it = file_cache.find(path);
 	if(it->second.status == file_cache_row::INVALID)
 		return -EIO;
-	bool dataReady = it->second.status != file_cache_row::DOWNLOADING || chunksAvailable(path,offset,size);
 	bool canWait = ((offset+size) - (it->second.available_bytes)) < 1024*1024 && it->second.startOffset <= offset;
 
 	
 
 
-	if(!dataReady) {
+	if(!it->second.canRead(offset,size)) {
 		if(!canWait) {
 			printf("--------------read too slow, downloading the requested chunk\n");
 			int startOffset = ChunkedHash::chunkfloor(offset);
@@ -489,7 +488,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 		printf("mi metto in attesa di ricevere i dati necessari\n");
 		EventsListener el(eh,EventsHandler::TRANSFER_UPDATE);
 				
-		while(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size)) {
+		while(!it->second.canRead(offset,size)) {
 			engine.unlock();
 			el.waitEvent();
 			engine.lock();

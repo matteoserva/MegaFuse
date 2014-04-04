@@ -227,10 +227,10 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
 		if(it->second.td == td) {
 			remotename = it->first;
-			tmp = it->second.localname;
-			/*int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
+			tmp = it->second.tmpname;
+			int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
 			if(fdt >= 0)
-				close(fdt);*/
+				close(fdt);
 			if(it->second.status == file_cache_row::INVALID) {
 
 				it->second.availableChunks.clear();

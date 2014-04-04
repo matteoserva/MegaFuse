@@ -1,5 +1,6 @@
-#include "megafusemodel.h"
-
+#include "file_cache_row.h"
+#include <fcntl.h>
+#include <unistd.h>
 file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false),handle(0)
 {
 	localname = tmpnam(NULL);

@@ -518,27 +518,30 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 	bool dataReady = it->second.status != file_cache_row::DOWNLOADING || chunksAvailable(path,offset,size);
 	bool canWait = ((offset+size) - (it->second.available_bytes)) < 1024*1024 && it->second.startOffset <= offset;
 
-	engine.unlock();
+	
 
 
 	if(!dataReady) {
 		if(!canWait) {
 			printf("--------------read too slow, downloading the requested chunk\n");
 			int startOffset = ChunkedHash::chunkfloor(offset);
+			engine.unlock();
 			int opend_ret = enqueueDownload(path,startOffset);
 			if(opend_ret < 0)
 				return opend_ret;
+			engine.lock();
 		}
-
+		
 		printf("mi metto in attesa di ricevere i dati necessari\n");
 		EventsListener el(eh,EventsHandler::TRANSFER_UPDATE);
 				
-		if(!chunksAvailable(path,offset,size)) {
-
-			while(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size))
-				el.waitEvent();
+		while(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size)) {
+			engine.unlock();
+			el.waitEvent();
+			engine.lock();
+				
 		}
-
+		
 	}
 
 

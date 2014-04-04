@@ -423,7 +423,12 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 		
 		
 		//std::cout << "readable bytes: " <<  ChunkedHash::chunkfloor(ChunkedHash::chunkfloor(it->second.startOffset) + bytes) <<std::endl;
+		static time_t last_update= time(NULL);
+		if(last_update < time(NULL))
+		{
 		std::cout << rigaDownload << size/1024/1024 << " MB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s, available_b/size " <<it->second.available_bytes<<"/"<<it->second.size<< " "<<(it->second.startOffset+bytes)<< "/" <<size<<"            ";
+		last_update = time(NULL);
+		}
 	}
 	
 	

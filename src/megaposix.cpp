@@ -293,9 +293,10 @@ int PosixFileAccess::fwrite(const byte* data, unsigned len, m_off_t pos)
 	return 0;
 }
 
+//CHANGED, don't truncate so specific chunks can be saved
 int PosixFileAccess::fopen(const char* f, int read, int write)
 {
-	if ((fd = open(f,write ? (read ? O_RDWR : O_WRONLY|O_CREAT|O_TRUNC) : O_RDONLY,0500)) >= 0)
+	if ((fd = open(f,write ? (read ? O_RDWR : O_WRONLY|O_CREAT) : O_RDONLY,0500)) >= 0)
 	{
 		struct stat statbuf;
 

@@ -153,8 +153,7 @@ std::map <std::string,file_cache_row>::iterator MegaFuseModel::eraseCacheRow(std
 {
 	if(it->second.n_clients != 0)
 		return ++it;
-	::unlink(it->second.localname.c_str());
-	::unlink(it->second.tmpname.c_str());
+	
 	it = file_cache.erase(it);
 	return it;
 }
@@ -181,58 +180,58 @@ void createthumbnail(const char* filename, unsigned size, string* result);
 int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 {
 	int ret = 0;
-	std::lock_guard<std::mutex>lock(api_mutex);
+	std::lock_guard<std::mutex>engine_lock(api_mutex);
 	auto it = file_cache.begin();
-	{
-		std::unique_lock<std::mutex> lock(engine_mutex);
-		it = file_cache.find(std::string(path));
-		it->second.n_clients--;
 
-		if(!it->second.n_clients && it->second.modified) {
-			Node *oldNode = nodeByPath(it->first);
+	std::unique_lock<std::mutex> lock(engine_mutex);
+	it = file_cache.find(std::string(path));
+	it->second.n_clients--;
 
-			auto target = splitPath(it->first);
-			Node *n = nodeByPath(target.first);
-			//if(target.second[0] == '.')
-			//return 0;
-			//client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
-			int td = client->topen(it->second.localname.c_str(),-1,2);
-			if (td < 0)
-				return -EAGAIN;
-			it->second.td = td;
-			it->second.status = file_cache_row::UPLOADING;
+	if(!it->second.n_clients && it->second.modified) {
+		Node *oldNode = nodeByPath(it->first);
 
-			std::string thumbnail;
-			createthumbnail(it->second.localname.c_str(),120,&thumbnail);
+		auto target = splitPath(it->first);
+		Node *n = nodeByPath(target.first);
+		//if(target.second[0] == '.')
+		//return 0;
+		//client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
+		int td = client->topen(it->second.localname.c_str(),-1,2);
+		if (td < 0)
+			return -EAGAIN;
+		it->second.td = td;
+		it->second.status = file_cache_row::UPLOADING;
 
-			if (thumbnail.size()) {
-				cout << "Image detected and thumbnail extracted, size " << thumbnail.size() << " bytes" << endl;
-				handle uh = client->uploadhandle(td);
-				client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
-			}
+		std::string thumbnail;
+		createthumbnail(it->second.localname.c_str(),120,&thumbnail);
 
-
+		if (thumbnail.size()) {
+			cout << "Image detected and thumbnail extracted, size " << thumbnail.size() << " bytes" << endl;
+			handle uh = client->uploadhandle(td);
+			client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
+		}
 
 
-			if(it->second.status ==file_cache_row::UPLOADING) {
-				EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
-				EventsListener el2(eh,EventsHandler::NODE_UPDATED);
+
+
+		if(it->second.status ==file_cache_row::UPLOADING) {
+			EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
+			EventsListener el2(eh,EventsHandler::NODE_UPDATED);
+			lock.unlock();
+			auto l_ress = el.waitEvent();
+
+			auto l_res = el2.waitEvent();
+			if(oldNode) {
+				lock.lock();
+				client->unlink(oldNode);
 				lock.unlock();
-				auto l_ress = el.waitEvent();
-
-				auto l_res = el2.waitEvent();
-				if(oldNode) {
-					lock.lock();
-					client->unlink(oldNode);
-					lock.unlock();
-				}
-
 			}
-
-
 
 		}
+
+
+
 	}
+
 
 	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
 
@@ -260,8 +259,8 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 {
 	Node *n;
-	{
-		std::lock_guard<std::mutex>lock(engine_mutex);
+	
+		std::unique_lock<std::mutex>lock(engine_mutex);
 
 		n = nodeByPath(remotename.c_str());
 		if(!n)
@@ -283,8 +282,9 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 		}
 
 
+		EventsListener el(eh,EventsHandler::TOPEN_RESULT);
 
-		opend_ret=0;
+
 		int td = client->topen(n->nodehandle, NULL, startOffset,-1, 1);
 
 		if(td < 0)
@@ -292,19 +292,19 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 		file_cache[remotename].td = td;
 		if(file_cache[remotename].status != file_cache_row::DOWNLOADING && file_cache[remotename].status != file_cache_row::DOWNLOAD_PAUSED)
 			file_cache[remotename].status = file_cache_row::INVALID;
-	}
+	lock.unlock();
 	file_cache[remotename].last_modified = n->mtime;
 	file_cache[remotename].size = n->size;
 	file_cache[remotename].startOffset = startOffset;
 	file_cache[remotename].available_bytes = 0;
 
 	printf("opend: aspetto il risultato per il file %s\n",remotename.c_str());
-	{
-		std::unique_lock<std::mutex> lk(cvm);
-		cv.wait(lk, [this] {return opend_ret;});
-	}
-	return 0;
-
+	
+			
+	auto l = el.waitEvent();
+	return l.result;
+		
+	
 }
 
 
@@ -323,7 +323,7 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	printf("flags:%X\n",fi->flags);
 	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
-	
+
 	//Workaround for kde bug in debian 7
 	if(sPath.second.find(".directory") == 0 && (fi->flags & O_EXCL))
 		return -EPERM;
@@ -332,21 +332,19 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 	Node *n = nodeByPath(p);
 	auto it = file_cache.find(path);
-if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED)
-	{
+	if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED) {
 		printf("resuming paused download11\n");
 	}
 	/*files with 0 clients are OK, it's a cache*/
 	bool oldCache = it != file_cache.end() && n && it->second.last_modified < n->mtime;
-	
+
 	if(oldCache && it->second.n_clients > 0)
 		return -EAGAIN;
-	if(oldCache && it->second.n_clients <= 0)
-	{
+	if(oldCache && it->second.n_clients <= 0) {
 		eraseCacheRow(it);
 		it = file_cache.end();
 	}
-	
+
 	bool fileExists = n || it != file_cache.end();
 
 	if(!fileExists && !(fi->flags & O_CREAT))
@@ -354,10 +352,8 @@ if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUS
 	if(fileExists && (fi->flags & O_CREAT) && (fi->flags & O_EXCL))
 		return -EEXIST;
 
-	if(fi->flags & O_TRUNC || (!fileExists && (fi->flags & O_CREAT)) )
-	{
-		if(file_cache[p].status == file_cache_row::DOWNLOADING) 
-		{
+	if(fi->flags & O_TRUNC || (!fileExists && (fi->flags & O_CREAT)) ) {
+		if(file_cache[p].status == file_cache_row::DOWNLOADING) {
 			client->tclose(file_cache[p].td);
 			file_cache[p].td = -1;
 		}
@@ -369,37 +365,33 @@ if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUS
 		truncate(file_cache[p].localname.c_str(), 0);
 		return 0;
 	}
-	
-	if(it != file_cache.end() && it->second.status != file_cache_row::INVALID && it->second.status != file_cache_row::DOWNLOAD_PAUSED)
-	{
+
+	if(it != file_cache.end() && it->second.status != file_cache_row::INVALID && it->second.status != file_cache_row::DOWNLOAD_PAUSED) {
 		it->second.n_clients++;
 		return 0;
 	}
-	if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED)
-	{
+	if(it != file_cache.end()  && it->second.status == file_cache_row::DOWNLOAD_PAUSED) {
 		printf("resuming paused download\n");
-	}
-	else
-	{
-	file_cache[p].status = file_cache_row::INVALID;
-	it = file_cache.find(p);
-	
+	} else {
+		file_cache[p].status = file_cache_row::INVALID;
+		it = file_cache.find(p);
+
 	}
 	engine.unlock();
-	
-	
-	
-	int opend_ret = enqueueDownload(p,0);
 
-	if(opend_ret < 0)
+
+
+	int res = enqueueDownload(p,0);
+
+	if(res < 0)
 		return -EIO;
-	
+
 	engine.lock();
 	it->second.n_clients++;
 	it->second.handle = n->nodehandle;
 	return 0;
-	
-	
+
+
 }
 
 
@@ -407,12 +399,11 @@ int MegaFuseModel::blockOffset(int pos)
 {
 	m_off_t end = 0;
 
-	for(int i=1;i<=8;i++)
-	{
-                if(i> pos) return end;
-                end +=i*ChunkedHash::SEGSIZE;
+	for(int i=1; i<=8; i++) {
+		if(i> pos) return end;
+		end +=i*ChunkedHash::SEGSIZE;
 	}
-	return (pos-8)*8*ChunkedHash::SEGSIZE + end;	
+	return (pos-8)*8*ChunkedHash::SEGSIZE + end;
 }
 
 
@@ -421,14 +412,13 @@ int MegaFuseModel::numChunks(m_off_t pos)
 	m_off_t end = 0;
 	if(pos == 0)
 		return 0;
-        for(int i=1;i<=8;i++)
-        {
-                end +=i*ChunkedHash::SEGSIZE;
-                if(end >= pos) return i;
-        }
-        return 8 + ceil(float(pos-end)/(8.0*ChunkedHash::SEGSIZE));
-	
-	
+	for(int i=1; i<=8; i++) {
+		end +=i*ChunkedHash::SEGSIZE;
+		if(end >= pos) return i;
+	}
+	return 8 + ceil(float(pos-end)/(8.0*ChunkedHash::SEGSIZE));
+
+
 }
 
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
@@ -448,7 +438,7 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 	int newsize = offset + size;
 	if(it->second.size < newsize) {
 		it->second.size = newsize;
-		
+
 		it->second.availableChunks.resize(numChunks(it->second.size),false);
 
 	}
@@ -471,7 +461,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 		return -EIO;
 	bool canWait = ((offset+size) - (it->second.available_bytes)) < 1024*1024 && it->second.startOffset <= offset;
 
-	
+
 
 
 	if(!it->second.canRead(offset,size)) {
@@ -479,22 +469,22 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 			printf("--------------read too slow, downloading the requested chunk\n");
 			int startOffset = ChunkedHash::chunkfloor(offset);
 			engine.unlock();
-			int opend_ret = enqueueDownload(path,startOffset);
-			if(opend_ret < 0)
-				return opend_ret;
+			int res = enqueueDownload(path,startOffset);
+			if(res < 0)
+				return res;
 			engine.lock();
 		}
-		
+
 		printf("mi metto in attesa di ricevere i dati necessari\n");
 		EventsListener el(eh,EventsHandler::TRANSFER_UPDATE);
-				
+
 		while(!it->second.canRead(offset,size)) {
 			engine.unlock();
 			el.waitEvent();
 			engine.lock();
-				
+
 		}
-		
+
 	}
 
 

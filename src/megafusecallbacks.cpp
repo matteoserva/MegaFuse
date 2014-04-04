@@ -194,14 +194,10 @@ void MegaFuseModel::topen_result(int td, error e)
 {
 
 	printf("topen fallito!\n");
-	last_error = e;
-	client->tclose(td);
-	{
-		std::lock_guard<std::mutex> lk(cvm);
-		opend_ret = -1;
-	}
-	cv.notify_one();
-	//open_lock.unlock();
+
+	eh.notifyEvent(EventsHandler::TOPEN_RESULT,-1);
+	
+
 }
 
 void MegaFuseModel::unlink_result(handle h, error e)
@@ -227,10 +223,10 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
 		if(it->second.td == td) {
 			remotename = it->first;
-			tmp = it->second.tmpname;
-			int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
+			tmp = it->second.localname;
+			/*int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
 			if(fdt >= 0)
-				close(fdt);
+				close(fdt);*/
 			if(it->second.status == file_cache_row::INVALID) {
 
 				it->second.availableChunks.clear();
@@ -245,11 +241,7 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 	printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
 	file_cache[remotename].status = file_cache_row::DOWNLOADING;
 	file_cache[remotename].available_bytes = 0;
-	{
-		std::lock_guard<std::mutex> lk(cvm);
-		opend_ret = 1;
-	}
-	cv.notify_all();
+	eh.notifyEvent(EventsHandler::TOPEN_RESULT,+1);
 }
 
 void MegaFuseModel::transfer_failed(int td, string& filename, error e)

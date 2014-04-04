@@ -5,7 +5,7 @@
 #include <condition_variable>
 
 #include "file_cache_row.h"
-
+#include <unordered_map>
 
 class MegaFuseCallback : public DemoApp
 {
@@ -17,7 +17,7 @@ class MegaFuseCallback : public DemoApp
 class MegaFuseModel : public DemoApp
 {
 	static const int CHUNKSIZE = 128*1024;
-    typedef std::map <std::string,file_cache_row> cacheMap;
+    typedef std::unordered_map <std::string,file_cache_row> cacheMap;
     std::map <std::string,file_cache_row> file_cache;
 public:
 	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
@@ -65,8 +65,7 @@ private:
     /*inter thread*/
     std::mutex cvm;
     std::condition_variable cv;
-    int opend_ret;
-    int putnodes_ret;
+
     int unlink_ret;
 	void users_updated(User** u, int count);
 

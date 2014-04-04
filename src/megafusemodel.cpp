@@ -261,12 +261,13 @@ bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int siz
 	auto it = file_cache.find(std::string(filename));
 	if(it == file_cache.end())
 		return false;
-	int startChunk = startOffset/CHUNKSIZE;
-	int endChunk = ceil(float(startOffset+size) / CHUNKSIZE);
+	int startChunk = numChunks(ChunkedHash::chunkfloor(startOffset));//startOffset/CHUNKSIZE;
+	int endChunk = numChunks(startOffset+size);
 	bool available = true;
 	for(int i = startChunk; i < endChunk && i < (int) it->second.availableChunks.size(); i++) {
 		available = available && it->second.availableChunks[i];
 	}
+	//printf("chunksavailable da %d a %d, blocchi da %d a %d escluso. riferimento: %d\n",startOffset,startOffset+size,startChunk,endChunk,ChunkedHash::chunkfloor(startOffset));
 	return available;
 }
 
@@ -448,7 +449,33 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 }
 
 
+int MegaFuseModel::blockOffset(int pos)
+{
+	m_off_t end = 0;
 
+	for(int i=1;i<=8;i++)
+	{
+                if(i> pos) return end;
+                end +=i*ChunkedHash::SEGSIZE;
+	}
+	return (pos-8)*8*ChunkedHash::SEGSIZE + end;	
+}
+
+
+int MegaFuseModel::numChunks(m_off_t pos)
+{
+	m_off_t end = 0;
+	if(pos == 0)
+		return 0;
+        for(int i=1;i<=8;i++)
+        {
+                end +=i*ChunkedHash::SEGSIZE;
+                if(end >= pos) return i;
+        }
+        return 8 + ceil(float(pos-end)/(8.0*ChunkedHash::SEGSIZE));
+	
+	
+}
 
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
@@ -467,9 +494,8 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 	int newsize = offset + size;
 	if(it->second.size < newsize) {
 		it->second.size = newsize;
-		int numChunks = ceil(float(it->second.size) / CHUNKSIZE );
-		printf("file resized to %d\n",newsize);
-		it->second.availableChunks.resize(numChunks,false);
+		
+		it->second.availableChunks.resize(numChunks(it->second.size),false);
 
 	}
 	return s;
@@ -498,23 +524,19 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 	if(!dataReady) {
 		if(!canWait) {
 			printf("--------------read too slow, downloading the requested chunk\n");
-			int startOffset = (CHUNKSIZE)* (offset / (CHUNKSIZE));
+			int startOffset = ChunkedHash::chunkfloor(offset);
 			int opend_ret = enqueueDownload(path,startOffset);
 			if(opend_ret < 0)
 				return opend_ret;
 		}
 
 		printf("mi metto in attesa di ricevere i dati necessari\n");
+		EventsListener el(eh,EventsHandler::TRANSFER_UPDATE);
+				
 		if(!chunksAvailable(path,offset,size)) {
 
-			{
-				std::unique_lock<std::mutex> lk(cvm);
-
-				printf("lock acquisito, \n");
-				cv.wait(lk, [this,it,path,offset,size] {return !(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size));});
-				printf("wait conclusa\n");
-			}
-
+			while(it->second.status == file_cache_row::DOWNLOADING && !chunksAvailable(path,offset,size))
+				el.waitEvent();
 		}
 
 	}

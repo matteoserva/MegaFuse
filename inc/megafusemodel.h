@@ -62,7 +62,8 @@ private:
     void check_cache();
     std::map <std::string,file_cache_row>::iterator eraseCacheRow(std::map <std::string,file_cache_row>::iterator it);
     std::map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
-	
+	int numChunks(m_off_t p);
+	int blockOffset(int pos);
 	/*callbacks*/
 
     error last_error;

@@ -227,16 +227,15 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
 		if(it->second.td == td) {
 			remotename = it->first;
-			tmp = it->second.tmpname;
-			int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
+			tmp = it->second.localname;
+			/*int fdt = ::open(tmp.c_str(), O_TRUNC, O_WRONLY);
 			if(fdt >= 0)
-				close(fdt);
+				close(fdt);*/
 			if(it->second.status == file_cache_row::INVALID) {
 
 				it->second.availableChunks.clear();
-				int numChunks = ceil(float(it->second.size) / CHUNKSIZE );
-				printf("tmpfile creato con %d blocchi\n",numChunks);
-				it->second.availableChunks.resize(numChunks,false);
+				
+				it->second.availableChunks.resize(numChunks(it->second.size),false);
 
 
 			}
@@ -286,10 +285,11 @@ std::map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransf
 */
 void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
+	printf("\ndownload complete\n\n");
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
 	if(it == file_cache.end())
 		return;
-	printf("download complete\n");
+	
 	client->tclose(it->second.td);
 	it->second.td = -1;
 
@@ -316,14 +316,16 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 				break;
 			}
 		}
+		int startOffset = blockOffset(startBlock);
 		int neededBytes = -1;
 		for(unsigned int i = startBlock; i < it->second.availableChunks.size(); i++) {
 			if(it->second.availableChunks[i]) {
-				neededBytes = CHUNKSIZE * (8+i-startBlock);
+				//workaround 2, download a bit more because the client is not always updated at the block boundary
+				neededBytes = ChunkedHash::SEGSIZE + blockOffset(i) - startOffset;
 				break;
 			}
 		}
-		int startOffset = startBlock * CHUNKSIZE;
+		
 		if(startOffset +neededBytes > it->second.size)
 			neededBytes = -1;
 		printf("------download reissued, missing %d bytes starting from block %d\n",neededBytes,startBlock);
@@ -364,37 +366,33 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 	
 	
 
-	int startChunk = it->second.startOffset / CHUNKSIZE;
+	int startChunk = numChunks(it->second.startOffset);
 
+	it->second.available_bytes = ChunkedHash::chunkfloor(ChunkedHash::chunkfloor(it->second.startOffset) + bytes);
 
+	int endChunk = numChunks(ChunkedHash::chunkfloor(it->second.available_bytes));
+	if(it->second.startOffset + bytes >= size)
 	{
-		std::lock_guard<std::mutex> lk(cvm);
-		struct stat st;
-		stat(it->second.tmpname.c_str(),&st);
-
-		it->second.available_bytes = st.st_size;
+		it->second.available_bytes = size;
+		endChunk = it->second.availableChunks.size();
 	}
-
-	int endChunk = it->second.available_bytes / CHUNKSIZE;
-	if(it->second.available_bytes == size)
-		endChunk = ceil(float(it->second.available_bytes) / CHUNKSIZE);
-	//printf("disponibili %d byte su %d, endChunk=%d\n",it->second.available_bytes,size,endChunk);
 
 	bool shouldStop = false;
 	for(int i = startChunk; i < endChunk; i++) {
 		try {
 			if(!it->second.availableChunks[i]) {
 				it->second.availableChunks[i] = true;
-				void *buf = malloc(CHUNKSIZE);
+				void *buf = malloc(1024*1024);
 				int fd;
 				fd = ::open(it->second.tmpname.c_str(),O_RDONLY);
-				int s = pread(fd,buf,CHUNKSIZE,i*CHUNKSIZE);
+				int daLeggere = blockOffset(i+1)-blockOffset(i);
+				int s = pread(fd,buf,daLeggere,blockOffset(i));
 				close(fd);
 				fd = ::open(it->second.localname.c_str(),O_WRONLY);
-				pwrite(fd,buf,s,i*CHUNKSIZE);
+				pwrite(fd,buf,s,blockOffset(i));
 				close(fd);
 				free(buf);
-
+				printf("blocco %d/%d disponibile, copiati %d/%d byte a partire da %d\n",i,it->second.availableChunks.size(),s,daLeggere,blockOffset(i));
 
 			}
 
@@ -421,12 +419,16 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 				rigaDownload.append("-");
 		}
 		rigaDownload.append("] ");
-		std::cout << rigaDownload << size/1024/1024 << " MB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s             ";
+		
+		
+		
+		//std::cout << "readable bytes: " <<  ChunkedHash::chunkfloor(ChunkedHash::chunkfloor(it->second.startOffset) + bytes) <<std::endl;
+		std::cout << rigaDownload << size/1024/1024 << " MB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s, available_b/size " <<it->second.available_bytes<<"/"<<it->second.size<< " "<<(it->second.startOffset+bytes)<< "/" <<size<<"            ";
 	}
 	
 	
 	cv.notify_all();
-	std::this_thread::yield();
+	eh.notifyEvent(EventsHandler::TRANSFER_UPDATE,0);
 
 	if( it->second.n_clients<=0) {
 		client->tclose(it->second.td);
@@ -434,12 +436,12 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 		it->second.td = -1;
 	}
 
-	//WORKAROUND
+	//WORKAROUNDS
 
-	if(it->second.startOffset && (it->second.startOffset+bytes)>size && it->second.available_bytes>= it->second.size) {
-
+	if(it->second.startOffset && it->second.available_bytes>= it->second.size) {
+		printf("workaround 1\n"); //have to call manually if the download didn't start at 0
 		transfer_complete(td,NULL,NULL);
-	} else if(endChunk > startChunk && (endChunk +1 > it->second.availableChunks.size() || it->second.availableChunks[endChunk])) {
+	} else if(endChunk > startChunk && endChunk < it->second.availableChunks.size() && it->second.availableChunks[endChunk]) {
 		printf("----Downloading already available data at block %d. stopping...\n",endChunk);
 		transfer_complete(td,NULL,NULL);
 	}

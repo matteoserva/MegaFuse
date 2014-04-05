@@ -1,11 +1,7 @@
 #include "megaclient.h"
 #include "megafusemodel.h"
 
-void MegaFuseModel::users_updated(User** u, int count)
-{
-	DemoApp::users_updated(u,count);
-	eh.notifyEvent(EventsHandler::USERS_UPDATED);
-}
+
 
 void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 {
@@ -25,15 +21,11 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 	}
 	eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
 
-
-	//eh.notifyEvent(EventsHandler::NODE_UPDATED,-1);
-	//  upload_lock.unlock();
 }
 
 
 
-std::string last_thumbnail;
-SymmCipher last_key;
+
 
 
 
@@ -120,64 +112,7 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 
 
-void MegaFuseModel::nodes_updated(Node** n, int c)
-{
-	DemoApp::nodes_updated(n,c);
 
-	if(!n)
-		return;
-
-	for(int i = 0; i<c; i++) {
-		bool removed = false;;
-		Node * nd = n[i];
-		std::string fullpath = std::string(nd->displayname());
-		while(nd->parent && nd->parent->type == FOLDERNODE) {
-			fullpath = std::string(nd->parent->displayname()) + "/" + fullpath;
-			nd = nd->parent;
-		}
-		if(nd->parent->type == ROOTNODE) {
-			fullpath = "/" + fullpath;
-		} else {
-			fullpath = "//" + fullpath;
-			removed = true;
-		}
-		removed = removed || n[i]->removed;
-
-		printf("fullpath %s\n",fullpath.c_str());
-		auto it = cacheManager.find(fullpath);
-		auto currentCache = cacheManager.findByHandle(n[i]->nodehandle);
-		if( !removed && currentCache != cacheManager.end() && fullpath != currentCache->first) {
-			//the handle is in cache
-
-
-
-			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
-			rename(currentCache->first.c_str(),fullpath.c_str());
-		} else if(!removed && it!= cacheManager.end() && it->second.status == file_cache_row::UPLOADING) {
-			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
-			it->second.handle = n[i]->nodehandle;
-			it->second.status = file_cache_row::AVAILABLE;
-			it->second.last_modified = n[i]->mtime;
-			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
-
-		}
-
-		else if(!removed && it!= cacheManager.end()) {
-			printf("file overwritten. nodehandle %lx\n",n[i]->nodehandle);
-			it->second.handle = n[i]->nodehandle;
-			it->second.status = file_cache_row::INVALID;
-			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
-
-		} else if(removed && currentCache != cacheManager.end()) {
-			printf("unlink detected, %s\n",currentCache->first.c_str());
-			unlink(currentCache->first);
-
-		}
-
-
-
-	}
-}
 
 void MegaFuseModel::topen_result(int td, error e)
 {
@@ -422,13 +357,4 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 
 }
 
-void MegaFuseModel::login_result(error e)
-{
-	printf("risultato arrivato\n");
-	int login_ret = (e)? -1:1;
 
-	if(!e)
-		client->fetchnodes();
-	eh.notifyEvent(EventsHandler::LOGIN_RESULT,login_ret);
-	printf("fine login_result\n");
-}

@@ -41,8 +41,9 @@ public:
 	
 };
 
-class MegaFuseModel : public DemoApp
+class MegaFuseModel 
 {
+	friend class MegaFuseApp;
 	CacheManager cacheManager;
 public:
 	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
@@ -65,7 +66,6 @@ private:
 	MegaFuseApp callbacksHandler;
 	
 	/*callbacks*/
-    void login_result(error e);
     void transfer_failed(int, string&, error);
     void transfer_complete(int, chunkmac_map*, const char*);
     void transfer_failed(int,  error);
@@ -75,10 +75,7 @@ private:
     void unlink_result(handle, error);
     void putnodes_result(error, targettype, NewNode*);
     void transfer_update(int, m_off_t, m_off_t, dstime);
-	//void rename_result(handle, error); NOT WORKING
     void putfa_result(handle, fatype, error);
-	void nodes_updated(Node**, int);
-	void users_updated(User** u, int count);
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);

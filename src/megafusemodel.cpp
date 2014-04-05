@@ -154,7 +154,7 @@ void createthumbnail(const char* filename, unsigned size, string* result);
 
 MegaApp* MegaFuseModel::getCallbacksHandler()
 {
-	return const_cast<MegaFuseModel * >(this);
+	return &callbacksHandler;
 }
 
 int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)

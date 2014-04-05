@@ -20,12 +20,69 @@ MegaFuseApp::~MegaFuseApp()
 
 void MegaFuseApp::login_result(error e)
 {
-	return model->login_result(e);
+	int login_ret = (e)? -1:1;
+	if(!e)
+		client->fetchnodes();
+	model->eh.notifyEvent(EventsHandler::LOGIN_RESULT,login_ret);
 }
 
-void MegaFuseApp::nodes_updated(Node** a, int b)
+void MegaFuseApp::nodes_updated(Node** n, int c)
 {
-	return model->nodes_updated(a,b);
+	DemoApp::nodes_updated(n,c);
+
+	if(!n)
+		return;
+
+	for(int i = 0; i<c; i++) {
+		bool removed = false;;
+		Node * nd = n[i];
+		std::string fullpath = std::string(nd->displayname());
+		while(nd->parent && nd->parent->type == FOLDERNODE) {
+			fullpath = std::string(nd->parent->displayname()) + "/" + fullpath;
+			nd = nd->parent;
+		}
+		if(nd->parent->type == ROOTNODE) {
+			fullpath = "/" + fullpath;
+		} else {
+			fullpath = "//" + fullpath;
+			removed = true;
+		}
+		removed = removed || n[i]->removed;
+
+		printf("fullpath %s\n",fullpath.c_str());
+		auto it = model->cacheManager.find(fullpath);
+		auto currentCache = model->cacheManager.findByHandle(n[i]->nodehandle);
+		if( !removed && currentCache != model->cacheManager.end() && fullpath != currentCache->first) {
+			//the handle is in cache
+
+
+
+			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
+			rename(currentCache->first.c_str(),fullpath.c_str());
+		} else if(!removed && it!= model->cacheManager.end() && it->second.status == file_cache_row::UPLOADING) {
+			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
+			it->second.handle = n[i]->nodehandle;
+			it->second.status = file_cache_row::AVAILABLE;
+			it->second.last_modified = n[i]->mtime;
+			model->eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
+
+		}
+
+		else if(!removed && it!= model->cacheManager.end()) {
+			printf("file overwritten. nodehandle %lx\n",n[i]->nodehandle);
+			it->second.handle = n[i]->nodehandle;
+			it->second.status = file_cache_row::INVALID;
+			model->eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
+
+		} else if(removed && currentCache != model->cacheManager.end()) {
+			printf("unlink detected, %s\n",currentCache->first.c_str());
+			model->unlink(currentCache->first);
+
+		}
+
+
+
+	}
 }
 
 void MegaFuseApp::putfa_result(handle h, fatype f , error e)
@@ -80,5 +137,6 @@ void MegaFuseApp::unlink_result(handle a, error b)
 
 void MegaFuseApp::users_updated(User** u, int count)
 {
-	return model->users_updated(u,count);
+	DemoApp::users_updated(u,count);
+	model->eh.notifyEvent(EventsHandler::USERS_UPDATED);
 }

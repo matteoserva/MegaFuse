@@ -31,6 +31,20 @@ bool file_cache_row::canRead(size_t offset,size_t size)
 	
 }
 
+unsigned int file_cache_row::firstUnavailableOffset()
+{
+	
+	int startBlock = 0;
+	for(unsigned int i = 0; i < availableChunks.size(); i++) {
+			if(!availableChunks[i]) {
+				startBlock = i;
+				break;
+			}
+		}
+	return CacheManager::blockOffset(startBlock);
+	
+}
+
 
 /*tells if the chunks required to perform a read are available*/
 bool file_cache_row::chunksAvailable(int startOffset,int size)

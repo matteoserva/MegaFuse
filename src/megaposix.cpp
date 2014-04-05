@@ -433,7 +433,7 @@ int main(int argc, char **argv)
    
 	std::vector<std::string> fuseArguments;
 	fuseArguments.push_back("megafuse");
-	fuseArguments.push_back("-d");
+	fuseArguments.push_back("-f");
 
 		fuseArguments.push_back(Config::getInstance()->MOUNTPOINT);
 

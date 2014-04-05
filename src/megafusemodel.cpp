@@ -90,7 +90,8 @@ std::pair<std::string,std::string> MegaFuseModel::splitPath(std::string path)
 //warning, no mutex
 Node* MegaFuseModel::nodeByPath(std::string path)
 {
-	printf("searching node by path %s\n",path.c_str());
+	std::string oldpath = path;
+	
 	if(engine_mutex.try_lock()) {
 		printf("errore mutex in nodebypath\n");
 		abort();
@@ -100,6 +101,9 @@ Node* MegaFuseModel::nodeByPath(std::string path)
 		n->type = ROOTNODE;
 		return n;
 	}
+	
+	printf("searching node by path: %s\n",path.c_str());
+	
 	if(path[0] == '/')
 		path = path.substr(1);
 	Node *n = client->nodebyhandle(client->rootnodes[0]);
@@ -116,7 +120,7 @@ Node* MegaFuseModel::nodeByPath(std::string path)
 	n = childNodeByName(n,path);
 	if(!n)
 		return NULL;
-	printf("nodo trovato in MEGA: %s\n",path.c_str());
+	printf("node found in MEGA: %s\n",oldpath.c_str());
 	return n;
 }
 
@@ -203,18 +207,8 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 				client->unlink(oldNode);
 				lock.unlock();
 			}
-
 		}
-
-
-
 	}
-
-
-	printf("release chiamato: il file %s e' ora utilizzato da %d utenti\n",it->first.c_str(),it->second.n_clients);
-
-
-	//check_cache();
 	return ret;
 }
 
@@ -242,6 +236,11 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 					return 0;
 				}
 			}
+			if(it != cacheManager.end() && startOffset == 0 && it->second.status == file_cache_row::DOWNLOAD_PAUSED)
+			{
+				startOffset = it->second.firstUnavailableOffset();
+				
+			}
 		}
 
 
@@ -249,7 +248,7 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 
 
 		int td = client->topen(n->nodehandle, NULL, startOffset,-1, 1);
-
+		printf("topen, in enqueue\n");
 		if(td < 0)
 			return -EIO;
 		cacheManager[remotename].td = td;
@@ -260,8 +259,7 @@ int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
 	cacheManager[remotename].size = n->size;
 	cacheManager[remotename].startOffset = startOffset;
 	cacheManager[remotename].available_bytes = 0;
-
-	printf("opend: aspetto il risultato per il file %s\n",remotename.c_str());
+	printf("%s: waiting for the download to start\n",remotename.c_str());
 	
 			
 	auto l = el.waitEvent();
@@ -412,7 +410,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 			engine.lock();
 		}
 
-		printf("mi metto in attesa di ricevere i dati necessari\n");
+		
 		EventsListener el(eh,EventsHandler::TRANSFER_UPDATE);
 
 		while(!it->second.canRead(offset,size)) {

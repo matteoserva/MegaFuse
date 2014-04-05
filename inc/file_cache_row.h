@@ -21,6 +21,7 @@ struct file_cache_row
 	
 	bool canRead(size_t offset,size_t size);
 	bool chunksAvailable(int startOffset,int size);
+	unsigned int firstUnavailableOffset();
 };
 
 class CacheManager

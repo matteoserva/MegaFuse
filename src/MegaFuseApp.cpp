@@ -148,14 +148,8 @@ void MegaFuseApp::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 		printf("download riuscito per %s,%d\n",remotename.c_str(),td);
 	} else {
 
-		int startBlock = 0;
-		for(unsigned int i = 0; i < it->second.availableChunks.size(); i++) {
-			if(!it->second.availableChunks[i]) {
-				startBlock = i;
-				break;
-			}
-		}
-		int startOffset = CacheManager::blockOffset(startBlock);
+		int startOffset = it->second.firstUnavailableOffset();
+		int startBlock = CacheManager::numChunks(startOffset);
 		int neededBytes = -1;
 		for(unsigned int i = startBlock; i < it->second.availableChunks.size(); i++) {
 			if(it->second.availableChunks[i]) {
@@ -314,9 +308,9 @@ void MegaFuseApp::transfer_update(int td, m_off_t bytes, m_off_t size, dstime st
 				fd = ::open(it->second.localname.c_str(),O_WRONLY);
 				pwrite(fd,buf,s,CacheManager::blockOffset(i));
 				close(fd);
-				free(buf);
-				printf("blocco %d/%d disponibile, copiati %d/%d byte a partire da %d\n",i,it->second.availableChunks.size(),s,daLeggere,CacheManager::blockOffset(i));
-*/
+				free(buf);*/
+				printf("blocco %d/%d disponibile,\n",i,it->second.availableChunks.size());
+
 			}
 
 		} catch(...) {

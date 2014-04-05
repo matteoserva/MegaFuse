@@ -33,12 +33,8 @@ public:
     void unlink_result(handle, error);
     void putnodes_result(error, targettype, NewNode*);
     void transfer_update(int, m_off_t, m_off_t, dstime);
-	//void rename_result(handle, error); NOT WORKING
-    void putfa_result(handle, fatype, error);
 	void nodes_updated(Node**, int);
 	void users_updated(User** u, int count);
-	
-	
 };
 
 class MegaFuseModel 
@@ -64,18 +60,6 @@ private:
     std::unordered_map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
 	MegaApp* getCallbacksHandler();
 	MegaFuseApp callbacksHandler;
-	
-	/*callbacks*/
-    void transfer_failed(int, string&, error);
-    void transfer_complete(int, chunkmac_map*, const char*);
-    void transfer_failed(int,  error);
-    void transfer_complete(int td, handle uploadhandle, const byte* uploadtoken, const byte* filekey, SymmCipher* key);
-    void topen_result(int td, error e);
-    void topen_result(int td, string* filename, const char* fa, int pfa);
-    void unlink_result(handle, error);
-    void putnodes_result(error, targettype, NewNode*);
-    void transfer_update(int, m_off_t, m_off_t, dstime);
-    void putfa_result(handle, fatype, error);
 
     /*fuse*/
     int open(const char *path, struct fuse_file_info *fi);
@@ -85,9 +69,6 @@ private:
     int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
     int write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi);
     int rename(const char * src, const char *dst);
-
-
-
 };
 
 

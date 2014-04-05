@@ -17,7 +17,7 @@ file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes
 }
 file_cache_row::~file_cache_row()
 {
-	::unlink(localname.c_str());
+	
 }
 
 
@@ -32,11 +32,11 @@ bool file_cache_row::canRead(size_t offset,size_t size)
 }
 
 
-
+/*tells if the chunks required to perform a read are available*/
 bool file_cache_row::chunksAvailable(int startOffset,int size)
 {
-	int startChunk = numChunks(ChunkedHash::chunkfloor(startOffset));//startOffset/CHUNKSIZE;
-	int endChunk = numChunks(startOffset+size);
+	int startChunk = CacheManager::numChunks(ChunkedHash::chunkfloor(startOffset));//startOffset/CHUNKSIZE;
+	int endChunk = CacheManager::numChunks(startOffset+size);
 	bool available = true;
 	for(int i = startChunk; i < endChunk && i < (int) availableChunks.size(); i++) {
 		available = available && availableChunks[i];
@@ -45,8 +45,8 @@ bool file_cache_row::chunksAvailable(int startOffset,int size)
 	return available;
 }
 
-
-int file_cache_row::numChunks(size_t pos)
+/*return the num of chunks required to store a file of this size*/
+int CacheManager::numChunks(size_t pos)
 {
 	size_t end = 0;
 	if(pos == 0)
@@ -60,6 +60,22 @@ int file_cache_row::numChunks(size_t pos)
 	
 	
 }
+
+/*returns the starting offset of a specified block
+ */
+
+int CacheManager::blockOffset(int pos)
+{
+	m_off_t end = 0;
+
+	for(int i=1; i<=8; i++) {
+		if(i> pos) return end;
+		end +=i*ChunkedHash::SEGSIZE;
+	}
+	return (pos-8)*8*ChunkedHash::SEGSIZE + end;
+}
+
+
 
 CacheManager::CacheManager()
 {
@@ -93,8 +109,12 @@ CacheManager::mapType::iterator CacheManager::find(std::string s)
 		return file_cache.cbegin();
 	}
 	
-	CacheManager::mapType::iterator CacheManager::erase(CacheManager::mapType::const_iterator it)
+	CacheManager::mapType::iterator CacheManager::tryErase(CacheManager::mapType::iterator it)
 	{
+		if(it->second.n_clients != 0)
+			return it;
+		
+		::unlink(it->second.localname.c_str());
 		return file_cache.erase(it);
 	}
 

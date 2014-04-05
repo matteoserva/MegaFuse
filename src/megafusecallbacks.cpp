@@ -17,7 +17,6 @@ void MegaFuseModel::putnodes_result(error e, targettype, NewNode* nn)
 void MegaFuseModel::transfer_failed(int td,  error e)
 {
 	printf("upload fallito\n");
-	last_error = e;
 	client->tclose(td);
 	auto it = findCacheByTransfer(td, file_cache_row::UPLOADING);
 	if(it == cacheManager.end()) {
@@ -212,8 +211,6 @@ void MegaFuseModel::unlink_result(handle h, error e)
 // topen() succeeded (download only)
 void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int pfa)
 {
-	last_error = API_OK;
-	result = td;
 	printf("topen riuscito\n");
 
 
@@ -231,7 +228,7 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 
 				it->second.availableChunks.clear();
 				
-				it->second.availableChunks.resize(numChunks(it->second.size),false);
+				it->second.availableChunks.resize(CacheManager::numChunks(it->second.size),false);
 
 
 			}
@@ -255,7 +252,6 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 	eh.notifyEvent(EventsHandler::TRANSFER_COMPLETE,-1);
 
 	//DemoApp::transfer_failed(td,filename,e);
-	last_error=e;
 	//download_lock.unlock();
 }
 
@@ -294,7 +290,6 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 		eh.notifyEvent(EventsHandler::TRANSFER_COMPLETE,+1);
 
 		printf("download riuscito per %s,%d\n",remotename.c_str(),td);
-		last_error=API_OK;
 	} else {
 
 		int startBlock = 0;
@@ -304,12 +299,12 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 				break;
 			}
 		}
-		int startOffset = blockOffset(startBlock);
+		int startOffset = CacheManager::blockOffset(startBlock);
 		int neededBytes = -1;
 		for(unsigned int i = startBlock; i < it->second.availableChunks.size(); i++) {
 			if(it->second.availableChunks[i]) {
 				//workaround 2, download a bit more because the client is not always updated at the block boundary
-				neededBytes = ChunkedHash::SEGSIZE + blockOffset(i) - startOffset;
+				neededBytes = ChunkedHash::SEGSIZE + CacheManager::blockOffset(i) - startOffset;
 				break;
 			}
 		}
@@ -354,11 +349,11 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 	
 	
 
-	int startChunk = numChunks(it->second.startOffset);
+	int startChunk = CacheManager::numChunks(it->second.startOffset);
 
 	it->second.available_bytes = ChunkedHash::chunkfloor(ChunkedHash::chunkfloor(it->second.startOffset) + bytes);
 
-	int endChunk = numChunks(ChunkedHash::chunkfloor(it->second.available_bytes));
+	int endChunk = CacheManager::numChunks(ChunkedHash::chunkfloor(it->second.available_bytes));
 	if(it->second.startOffset + bytes >= size)
 	{
 		it->second.available_bytes = size;
@@ -373,14 +368,14 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 				void *buf = malloc(1024*1024);
 				int fd;
 				fd = ::open(it->second.tmpname.c_str(),O_RDONLY);
-				int daLeggere = blockOffset(i+1)-blockOffset(i);
-				int s = pread(fd,buf,daLeggere,blockOffset(i));
+				int daLeggere = CacheManager::blockOffset(i+1)-CacheManager::blockOffset(i);
+				int s = pread(fd,buf,daLeggere,CacheManager::blockOffset(i));
 				close(fd);
 				fd = ::open(it->second.localname.c_str(),O_WRONLY);
-				pwrite(fd,buf,s,blockOffset(i));
+				pwrite(fd,buf,s,CacheManager::blockOffset(i));
 				close(fd);
 				free(buf);
-				printf("blocco %d/%d disponibile, copiati %d/%d byte a partire da %d\n",i,it->second.availableChunks.size(),s,daLeggere,blockOffset(i));
+				printf("blocco %d/%d disponibile, copiati %d/%d byte a partire da %d\n",i,it->second.availableChunks.size(),s,daLeggere,CacheManager::blockOffset(i));
 
 			}
 

@@ -40,15 +40,11 @@ private:
     std::unordered_map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuseModel();
     void check_cache();
-    std::unordered_map <std::string,file_cache_row>::iterator eraseCacheRow(std::unordered_map <std::string,file_cache_row>::iterator it);
     std::unordered_map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
-	int numChunks(m_off_t p);
-	int blockOffset(int pos);
+
 	
 	
 	/*callbacks*/
-    error last_error;
-    int result;
     void login_result(error e);
     void transfer_failed(int, string&, error);
     void transfer_complete(int, chunkmac_map*, const char*);

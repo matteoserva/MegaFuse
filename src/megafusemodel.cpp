@@ -39,14 +39,14 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 	std::swap(cacheManager[dst].n_clients,cacheManager[src].n_clients);
 	cacheManager[src].status = file_cache_row::INVALID;
 	if(cacheManager[src].n_clients <= 0)
-		eraseCacheRow(cacheManager.find(src));
+		cacheManager.tryErase(cacheManager.find(src));
 	return 0;
 
 
 
 }
 
-MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):eh(eh),engine_mutex(em)
+MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):engine_mutex(em),eh(eh)
 {
 
 }
@@ -54,10 +54,6 @@ MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):eh(eh),engine_mut
 int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
-
-	printf("-------------getattr requested, %s\n",path);
-
-	Node *n = nodeByPath(path);
 
 	for(auto it = cacheManager.cbegin(); it != cacheManager.cend(); ++it)
 		if(it->first == std::string(path)) {
@@ -141,16 +137,6 @@ Node* MegaFuseModel::childNodeByName(Node *p,std::string name)
 }
 
 
-
-std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::eraseCacheRow(std::unordered_map <std::string,file_cache_row>::iterator it)
-{
-	if(it->second.n_clients != 0)
-		return ++it;
-	
-	it = cacheManager.erase(it);
-	return it;
-}
-
 void MegaFuseModel::check_cache()
 {
 	if(cacheManager.size() < 2)
@@ -161,7 +147,7 @@ void MegaFuseModel::check_cache()
 			printf("rimuovo il file %s dalla cache\n",it->first.c_str());
 			if(it->second.status ==file_cache_row::DOWNLOADING) //UPLOADING FILES IGNORED
 				client->tclose(it->second.td);
-			eraseCacheRow(it);
+			cacheManager.tryErase(it);
 		}
 	printf("check cache \n");
 }
@@ -184,7 +170,6 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 		Node *oldNode = nodeByPath(it->first);
 
 		auto target = splitPath(it->first);
-		Node *n = nodeByPath(target.first);
 		//if(target.second[0] == '.')
 		//return 0;
 		//client->putq.push_back(new MegaFuseFilePut(it->second.localname.c_str(),n->nodehandle,"",target.second.c_str(),it->first));
@@ -232,21 +217,6 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 	//check_cache();
 	return ret;
 }
-
-/*bool MegaFuseModel::chunksAvailable(std::string filename,int startOffset,int size)
-{
-	auto it = cacheManager.find(std::string(filename));
-	if(it == cacheManager.end())
-		return false;
-	int startChunk = numChunks(ChunkedHash::chunkfloor(startOffset));//startOffset/CHUNKSIZE;
-	int endChunk = numChunks(startOffset+size);
-	bool available = true;
-	for(int i = startChunk; i < endChunk && i < (int) it->second.availableChunks.size(); i++) {
-		available = available && it->second.availableChunks[i];
-	}
-	//printf("chunksavailable da %d a %d, blocchi da %d a %d escluso. riferimento: %d\n",startOffset,startOffset+size,startChunk,endChunk,ChunkedHash::chunkfloor(startOffset));
-	return available;
-}*/
 
 
 int MegaFuseModel::enqueueDownload(std::string remotename,int startOffset=0)
@@ -334,7 +304,7 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	if(oldCache && it->second.n_clients > 0)
 		return -EAGAIN;
 	if(oldCache && it->second.n_clients <= 0) {
-		eraseCacheRow(it);
+		cacheManager.tryErase(it);
 		it = cacheManager.end();
 	}
 
@@ -388,31 +358,8 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 }
 
 
-int MegaFuseModel::blockOffset(int pos)
-{
-	m_off_t end = 0;
-
-	for(int i=1; i<=8; i++) {
-		if(i> pos) return end;
-		end +=i*ChunkedHash::SEGSIZE;
-	}
-	return (pos-8)*8*ChunkedHash::SEGSIZE + end;
-}
 
 
-int MegaFuseModel::numChunks(m_off_t pos)
-{
-	m_off_t end = 0;
-	if(pos == 0)
-		return 0;
-	for(int i=1; i<=8; i++) {
-		end +=i*ChunkedHash::SEGSIZE;
-		if(end >= pos) return i;
-	}
-	return 8 + ceil(float(pos-end)/(8.0*ChunkedHash::SEGSIZE));
-
-
-}
 
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
@@ -432,7 +379,7 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 	if(it->second.size < newsize) {
 		it->second.size = newsize;
 
-		it->second.availableChunks.resize(numChunks(it->second.size),false);
+		it->second.availableChunks.resize(CacheManager::numChunks(it->second.size),false);
 
 	}
 	return s;
@@ -514,7 +461,7 @@ int MegaFuseModel::unlink(std::string filename)
 
 	it->second.status = file_cache_row::INVALID;
 	if( it->second.n_clients <= 0)
-		eraseCacheRow(it);
+		cacheManager.tryErase(it);
 	return 0;
 
 
@@ -525,6 +472,6 @@ MegaFuseModel::~MegaFuseModel()
 {
 	auto it = cacheManager.begin();
 	while(it != cacheManager.end())
-		it = eraseCacheRow(it);
+		it = cacheManager.tryErase(it);
 
 }

@@ -21,7 +21,6 @@ struct file_cache_row
 	
 	bool canRead(size_t offset,size_t size);
 	bool chunksAvailable(int startOffset,int size);
-	static int numChunks(size_t pos);
 };
 
 class CacheManager
@@ -32,12 +31,17 @@ class CacheManager
 	public:
 	CacheManager();
 	file_cache_row& operator[] (std::string);
+	static int blockOffset(int pos);
+	static int numChunks(size_t pos);
+
+	
+	
 	
 	mapType::iterator find(std::string);
 	mapType::iterator end();
 	mapType::iterator begin();
 	mapType::const_iterator cend();
 	mapType::const_iterator cbegin();
-	mapType::iterator erase(mapType::const_iterator it);
+	mapType::iterator tryErase(mapType::iterator it);
 	size_t size();
 };

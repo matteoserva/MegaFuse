@@ -3,7 +3,7 @@ TARGET = MegaFuse
 ###############
 
 
-SRC = src/file_cache_row.cpp src/EventsHandler.cpp src/MegaFuse.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp src/fuseImpl.cpp src/megacli.cpp
+SRC = src/MegaFuseApp.cpp src/file_cache_row.cpp src/EventsHandler.cpp src/MegaFuse.cpp src/megafusecallbacks.cpp  src/megafusemodel.cpp src/megaposix.cpp src/Config.cpp src/fuseImpl.cpp src/megacli.cpp
 
 SRC += sdk/megabdb.cpp sdk/megaclient.cpp sdk/megacrypto.cpp 
 

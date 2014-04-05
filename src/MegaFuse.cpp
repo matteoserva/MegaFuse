@@ -16,7 +16,10 @@ MegaFuse::MegaFuse()
 {
 
 	model = new MegaFuseModel(eh,engine_mutex);
-	client = new MegaClient(model,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
+	MegaApp* handler = model->getCallbacksHandler();
+	
+	
+	client = new MegaClient(handler,new CurlHttpIO,new BdbAccess,Config::getInstance()->APPKEY.c_str());
 	event_loop_thread = std::thread(event_loop,this);
 }
 void MegaFuse::event_loop(MegaFuse* that)

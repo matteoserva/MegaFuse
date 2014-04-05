@@ -9,13 +9,6 @@
 #include <sys/stat.h>
 
 
-
-
-
-
-
-
-
 std::set<std::string> MegaFuseModel::readdir(const char *path)
 {
 	std::set<std::string> names;
@@ -53,7 +46,7 @@ int MegaFuseModel::rename(const char * src, const char *dst)
 
 }
 
-MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):eh(eh),engine_mutex(em),cacheManager(),file_cache(cacheManager.file_cache)
+MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):eh(eh),engine_mutex(em)
 {
 
 }
@@ -154,13 +147,13 @@ std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::eraseCa
 	if(it->second.n_clients != 0)
 		return ++it;
 	
-	it = file_cache.erase(it);
+	it = cacheManager.erase(it);
 	return it;
 }
 
 void MegaFuseModel::check_cache()
 {
-	if(file_cache.size() < 2)
+	if(cacheManager.size() < 2)
 		return;
 	std::lock_guard<std::mutex>lock(engine_mutex);
 	for(auto it = cacheManager.begin(); it!= cacheManager.end(); ++it)

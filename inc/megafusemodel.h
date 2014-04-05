@@ -18,8 +18,6 @@ class MegaFuseModel : public DemoApp
 {
 	static const int CHUNKSIZE = 128*1024;
 	CacheManager cacheManager;
-    typedef std::unordered_map <std::string,file_cache_row> cacheMap;
-    std::unordered_map <std::string,file_cache_row> &file_cache;
 public:
 	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
 	std::mutex &engine_mutex;
@@ -46,8 +44,9 @@ private:
     std::unordered_map <std::string,file_cache_row>::iterator findCacheByHandle(uint64_t);
 	int numChunks(m_off_t p);
 	int blockOffset(int pos);
+	
+	
 	/*callbacks*/
-
     error last_error;
     int result;
     void login_result(error e);
@@ -63,11 +62,6 @@ private:
 	//void rename_result(handle, error); NOT WORKING
     void putfa_result(handle, fatype, error);
 	void nodes_updated(Node**, int);
-    /*inter thread*/
-    std::mutex cvm;
-    std::condition_variable cv;
-
-    int unlink_ret;
 	void users_updated(User** u, int count);
 
     /*fuse*/

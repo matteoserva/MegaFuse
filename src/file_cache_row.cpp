@@ -92,3 +92,13 @@ CacheManager::mapType::iterator CacheManager::find(std::string s)
 	{
 		return file_cache.cbegin();
 	}
+	
+	CacheManager::mapType::iterator CacheManager::erase(CacheManager::mapType::const_iterator it)
+	{
+		return file_cache.erase(it);
+	}
+
+	size_t CacheManager::size()
+	{
+		return file_cache.size();
+	}

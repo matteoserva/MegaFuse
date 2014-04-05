@@ -20,7 +20,7 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 	last_error = e;
 	client->tclose(td);
 	auto it = findCacheByTransfer(td, file_cache_row::UPLOADING);
-	if(it == file_cache.end()) {
+	if(it == cacheManager.end()) {
 		it->second.status = file_cache_row::AVAILABLE;
 		it->second.td = -1;
 	}
@@ -43,7 +43,7 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 
 	//DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
 	auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
-	if(it == file_cache.end()) {
+	if(it == cacheManager.end()) {
 		client->tclose(td);
 		return;
 	}
@@ -121,12 +121,12 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
 {
-	for(auto it = file_cache.begin(); it != file_cache.end(); ++it) {
+	for(auto it = cacheManager.begin(); it != cacheManager.end(); ++it) {
 		if(it->second.handle == h)
 			return it;
 
 	}
-	return file_cache.end();
+	return cacheManager.end();
 
 
 }
@@ -155,16 +155,16 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 		removed = removed || n[i]->removed;
 
 		printf("fullpath %s\n",fullpath.c_str());
-		auto it = file_cache.find(fullpath);
+		auto it = cacheManager.find(fullpath);
 		auto currentCache = findCacheByHandle(n[i]->nodehandle);
-		if( !removed && currentCache != file_cache.end() && fullpath != currentCache->first) {
+		if( !removed && currentCache != cacheManager.end() && fullpath != currentCache->first) {
 			//the handle is in cache
 
 
 
 			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
 			rename(currentCache->first.c_str(),fullpath.c_str());
-		} else if(!removed && it!= file_cache.end() && it->second.status == file_cache_row::UPLOADING) {
+		} else if(!removed && it!= cacheManager.end() && it->second.status == file_cache_row::UPLOADING) {
 			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
 			it->second.status = file_cache_row::AVAILABLE;
@@ -173,13 +173,13 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 
 		}
 
-		else if(!removed && it!= file_cache.end()) {
+		else if(!removed && it!= cacheManager.end()) {
 			printf("file overwritten. nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;
 			it->second.status = file_cache_row::INVALID;
 			eh.notifyEvent(EventsHandler::NODE_UPDATED,0,fullpath);
 
-		} else if(removed && currentCache != file_cache.end()) {
+		} else if(removed && currentCache != cacheManager.end()) {
 			printf("unlink detected, %s\n",currentCache->first.c_str());
 			unlink(currentCache->first);
 
@@ -220,7 +220,7 @@ void MegaFuseModel::topen_result(int td, string* filename, const char* fa, int p
 
 	std::string remotename = "";
 	std::string tmp;
-	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
+	for(auto it = cacheManager.begin(); it!=cacheManager.end(); ++it)
 		if(it->second.td == td) {
 			remotename = it->first;
 			tmp = it->second.localname;
@@ -250,12 +250,10 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 	printf("download fallito: %d\n",e);
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
 	client->tclose(td);
-	it->second.td = -1;
-	{
-		std::lock_guard<std::mutex> lk(cvm);
+
 		it->second.status = file_cache_row::INVALID;
-	}
-	cv.notify_all();
+	eh.notifyEvent(EventsHandler::TRANSFER_COMPLETE,-1);
+
 	//DemoApp::transfer_failed(td,filename,e);
 	last_error=e;
 	//download_lock.unlock();
@@ -263,10 +261,10 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 
 std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
 {
-	for(auto it = file_cache.begin(); it!=file_cache.end(); ++it)
+	for(auto it = cacheManager.begin(); it!=cacheManager.end(); ++it)
 		if(it->second.status == status && it->second.td == td)
 			return it;
-	return file_cache.end();
+	return cacheManager.end();
 }
 
 
@@ -279,7 +277,7 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 {
 	printf("\ndownload complete\n\n");
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
-	if(it == file_cache.end())
+	if(it == cacheManager.end())
 		return;
 	
 	client->tclose(it->second.td);
@@ -291,11 +289,9 @@ void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn
 	}
 	if(complete) {
 		std::string remotename = it->first;
-		{
-			std::lock_guard<std::mutex> lk(cvm);
+
 			it->second.status = file_cache_row::AVAILABLE;
-		}
-		cv.notify_all();
+		eh.notifyEvent(EventsHandler::TRANSFER_COMPLETE,+1);
 
 		printf("download riuscito per %s,%d\n",remotename.c_str(),td);
 		last_error=API_OK;
@@ -343,14 +339,14 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 	std::string remotename = "";
 
 	
-	if(findCacheByTransfer(td,file_cache_row::UPLOADING ) != file_cache.end()) {
+	if(findCacheByTransfer(td,file_cache_row::UPLOADING ) != cacheManager.end()) {
 		cout << '\r'<<"UPLOAD TD " << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" ;
 
 		fflush(stdout);
 		return;
 	}
 	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
-	if(it == file_cache.end())
+	if(it == cacheManager.end())
 	{
 		client->tclose(td);
 		return;
@@ -424,7 +420,7 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 	}
 	
 	
-	cv.notify_all();
+
 	eh.notifyEvent(EventsHandler::TRANSFER_UPDATE,0);
 
 	if( it->second.n_clients<=0) {

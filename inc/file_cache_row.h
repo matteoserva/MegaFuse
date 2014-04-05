@@ -38,4 +38,6 @@ class CacheManager
 	mapType::iterator begin();
 	mapType::const_iterator cend();
 	mapType::const_iterator cbegin();
+	mapType::iterator erase(mapType::const_iterator it);
+	size_t size();
 };

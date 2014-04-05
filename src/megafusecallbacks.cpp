@@ -18,7 +18,7 @@ void MegaFuseModel::transfer_failed(int td,  error e)
 {
 	printf("upload fallito\n");
 	client->tclose(td);
-	auto it = findCacheByTransfer(td, file_cache_row::UPLOADING);
+	auto it = cacheManager.findByTransfer(td, file_cache_row::UPLOADING);
 	if(it == cacheManager.end()) {
 		it->second.status = file_cache_row::AVAILABLE;
 		it->second.td = -1;
@@ -41,7 +41,7 @@ void MegaFuseModel::transfer_complete(int td, handle ulhandle, const byte* ultok
 {
 
 	//DemoApp::transfer_complete(td,uploadhandle,uploadtoken,filekey,key);
-	auto it = findCacheByTransfer(td,file_cache_row::UPLOADING );
+	auto it = cacheManager.findByTransfer(td,file_cache_row::UPLOADING );
 	if(it == cacheManager.end()) {
 		client->tclose(td);
 		return;
@@ -118,17 +118,7 @@ void MegaFuseModel::putfa_result(handle, fatype, error e)
 
 }
 
-std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByHandle(uint64_t h)
-{
-	for(auto it = cacheManager.begin(); it != cacheManager.end(); ++it) {
-		if(it->second.handle == h)
-			return it;
 
-	}
-	return cacheManager.end();
-
-
-}
 
 void MegaFuseModel::nodes_updated(Node** n, int c)
 {
@@ -155,7 +145,7 @@ void MegaFuseModel::nodes_updated(Node** n, int c)
 
 		printf("fullpath %s\n",fullpath.c_str());
 		auto it = cacheManager.find(fullpath);
-		auto currentCache = findCacheByHandle(n[i]->nodehandle);
+		auto currentCache = cacheManager.findByHandle(n[i]->nodehandle);
 		if( !removed && currentCache != cacheManager.end() && fullpath != currentCache->first) {
 			//the handle is in cache
 
@@ -245,7 +235,7 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 {
 
 	printf("download fallito: %d\n",e);
-	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	auto it = cacheManager.findByTransfer(td,file_cache_row::DOWNLOADING );
 	client->tclose(td);
 
 		it->second.status = file_cache_row::INVALID;
@@ -255,13 +245,6 @@ void MegaFuseModel::transfer_failed(int td, string& filename, error e)
 	//download_lock.unlock();
 }
 
-std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCacheByTransfer(int td, file_cache_row::CacheStatus status)
-{
-	for(auto it = cacheManager.begin(); it!=cacheManager.end(); ++it)
-		if(it->second.status == status && it->second.td == td)
-			return it;
-	return cacheManager.end();
-}
 
 
 
@@ -272,7 +255,7 @@ std::unordered_map <std::string,file_cache_row>::iterator MegaFuseModel::findCac
 void MegaFuseModel::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 {
 	printf("\ndownload complete\n\n");
-	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	auto it = cacheManager.findByTransfer(td,file_cache_row::DOWNLOADING );
 	if(it == cacheManager.end())
 		return;
 	
@@ -334,13 +317,13 @@ void MegaFuseModel::transfer_update(int td, m_off_t bytes, m_off_t size, dstime 
 	std::string remotename = "";
 
 	
-	if(findCacheByTransfer(td,file_cache_row::UPLOADING ) != cacheManager.end()) {
+	if(cacheManager.findByTransfer(td,file_cache_row::UPLOADING ) != cacheManager.end()) {
 		cout << '\r'<<"UPLOAD TD " << td << ": Update: " << bytes/1024 << " KB of " << size/1024 << " KB, " << bytes*10/(1024*(client->httpio->ds-starttime)+1) << " KB/s" ;
 
 		fflush(stdout);
 		return;
 	}
-	auto it = findCacheByTransfer(td,file_cache_row::DOWNLOADING );
+	auto it = cacheManager.findByTransfer(td,file_cache_row::DOWNLOADING );
 	if(it == cacheManager.end())
 	{
 		client->tclose(td);

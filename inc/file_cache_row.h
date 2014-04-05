@@ -33,6 +33,8 @@ class CacheManager
 	file_cache_row& operator[] (std::string);
 	static int blockOffset(int pos);
 	static int numChunks(size_t pos);
+	mapType::iterator findByHandle(uint64_t h);
+	mapType::iterator findByTransfer(int td, file_cache_row::CacheStatus status);
 
 	
 	

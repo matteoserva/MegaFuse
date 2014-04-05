@@ -30,7 +30,6 @@ std::set<std::string> MegaFuseModel::readdir(const char *path)
 int MegaFuseModel::rename(const char * src, const char *dst)
 {
 	printf("--------requested rename from %s to %s\n",src,dst);
-	std::lock_guard<std::mutex>lock(api_mutex);
 
 
 	if(cacheManager.find(src) == cacheManager.end() )
@@ -53,7 +52,6 @@ MegaFuseModel::MegaFuseModel(EventsHandler &eh,std::mutex &em):engine_mutex(em),
 
 int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 {
-	std::lock_guard<std::mutex>lock(api_mutex);
 
 	for(auto it = cacheManager.cbegin(); it != cacheManager.cend(); ++it)
 		if(it->first == std::string(path)) {
@@ -159,7 +157,6 @@ void createthumbnail(const char* filename, unsigned size, string* result);
 int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 {
 	int ret = 0;
-	std::lock_guard<std::mutex>engine_lock(api_mutex);
 	auto it = cacheManager.begin();
 
 	std::unique_lock<std::mutex> lock(engine_mutex);
@@ -284,7 +281,6 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 
 	printf("flags:%X\n",fi->flags);
-	std::lock_guard<std::mutex>lock(api_mutex);
 	std::string path(p);
 
 	//Workaround for kde bug in debian 7
@@ -363,7 +359,6 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
-	std::lock_guard<std::mutex>lock(api_mutex);
 
 	auto it = cacheManager.find(path);
 
@@ -389,7 +384,6 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	printf("read requested, offset %ld, size %ld\n",offset,size);
-	std::lock_guard<std::mutex>lock(api_mutex);
 
 
 
@@ -446,7 +440,6 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 
 int MegaFuseModel::unlink(std::string filename)
 {
-	std::lock_guard<std::mutex>lock(api_mutex);
 	printf("-------------unlinking %s\n",filename.c_str());
 
 	auto it = cacheManager.find(filename);

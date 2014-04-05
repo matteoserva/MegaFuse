@@ -75,6 +75,25 @@ int CacheManager::blockOffset(int pos)
 	return (pos-8)*8*ChunkedHash::SEGSIZE + end;
 }
 
+CacheManager::mapType::iterator CacheManager::findByHandle(uint64_t h)
+{
+	for(auto it = begin(); it != end(); ++it) {
+		if(it->second.handle == h)
+			return it;
+
+	}
+	return end();
+
+
+}
+CacheManager::mapType::iterator CacheManager::findByTransfer(int td, file_cache_row::CacheStatus status)
+{
+	for(auto it = begin(); it!=end(); ++it)
+		if(it->second.status == status && it->second.td == td)
+			return it;
+	return end();
+}
+
 
 
 CacheManager::CacheManager()

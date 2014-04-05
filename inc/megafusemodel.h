@@ -16,24 +16,17 @@ class MegaFuseCallback : public DemoApp
 #include "EventsHandler.h"
 class MegaFuseModel : public DemoApp
 {
-	static const int CHUNKSIZE = 128*1024;
 	CacheManager cacheManager;
 public:
 	MegaFuseModel(EventsHandler &,std::mutex &engine_mutex);
 	std::mutex &engine_mutex;
 	Node* nodeByPath(std::string path);
-	    std::pair<std::string,std::string> splitPath(std::string);
+	std::pair<std::string,std::string> splitPath(std::string);
 
 private:
 	EventsHandler &eh;
-    //static void event_loop(MegaFuseModel* megaFuse);
-    std::thread event_loop_thread;
-    
-    std::mutex api_mutex;
-    byte pwkey[SymmCipher::KEYLENGTH];
-    
+
     Node* childNodeByName(Node *p,std::string name);
-	//bool chunksAvailable(std::string filename,int startOffset,int size);
     public:
 	int enqueueDownload(std::string filename,int startOffset);
     int unlink(std::string);

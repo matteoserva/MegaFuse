@@ -57,7 +57,7 @@ void MegaFuseApp::nodes_updated(Node** n, int c)
 
 
 			printf("rename detected from %s to %s and source is in cache\n",currentCache->first.c_str(),fullpath.c_str());
-			rename(currentCache->first.c_str(),fullpath.c_str());
+			model->rename(currentCache->first.c_str(),fullpath.c_str());
 		} else if(!removed && it!= model->cacheManager.end() && it->second.status == file_cache_row::UPLOADING) {
 			printf("file uploaded nodehandle %lx\n",n[i]->nodehandle);
 			it->second.handle = n[i]->nodehandle;

@@ -1,3 +1,7 @@
+/* This class will handle the messages coming from the mega client and update the model.
+ * 
+ **/
+
 #include "mega.h"
 
 #include "megacrypto.h"

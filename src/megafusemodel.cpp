@@ -1,3 +1,9 @@
+/* This is the local representation of the remote fs.
+ * It will try to mirror the MEGA remote filesystem.
+ * 
+ * 
+ */ 
+
 #include "mega.h"
 
 #include "megacrypto.h"

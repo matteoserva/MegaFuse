@@ -1,4 +1,7 @@
-
+/* This class is responsible for querying both the mega remote fs and the local model,
+ * then it returns the results.
+ * 
+ */
 
 
 #include "megaclient.h"

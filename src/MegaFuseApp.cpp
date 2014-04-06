@@ -135,20 +135,18 @@ void MegaFuseApp::transfer_complete(int td, chunkmac_map* macs, const char* fn)
 	client->tclose(it->second.td);
 	it->second.td = -1;
 
-	bool complete = true;
-	for (bool i : it->second.availableChunks ) {
-		complete = complete && i;
-	}
-	if(complete) {
+	int missingOffset = it->second.firstUnavailableOffset();
+	
+	if(missingOffset < 0) {
 		std::string remotename = it->first;
 
 			it->second.status = file_cache_row::AVAILABLE;
 		model->eh.notifyEvent(EventsHandler::TRANSFER_COMPLETE,+1);
 
-		printf("download riuscito per %s,%d\n",remotename.c_str(),td);
+		printf("download complete %s, transfer %d\n",remotename.c_str(),td);
 	} else {
 
-		int startOffset = it->second.firstUnavailableOffset();
+		int startOffset = missingOffset;
 		int startBlock = CacheManager::numChunks(startOffset);
 		int neededBytes = -1;
 		for(unsigned int i = startBlock; i < it->second.availableChunks.size(); i++) {
@@ -294,22 +292,12 @@ void MegaFuseApp::transfer_update(int td, m_off_t bytes, m_off_t size, dstime st
 		endChunk = it->second.availableChunks.size();
 	}
 
-	bool shouldStop = false;
 	for(int i = startChunk; i < endChunk; i++) {
 		try {
 			if(!it->second.availableChunks[i]) {
 				it->second.availableChunks[i] = true;
-				/*void *buf = malloc(1024*1024);
-				int fd;
-				fd = ::open(it->second.tmpname.c_str(),O_RDONLY);
-				int daLeggere = CacheManager::blockOffset(i+1)-CacheManager::blockOffset(i);
-				int s = pread(fd,buf,daLeggere,CacheManager::blockOffset(i));
-				close(fd);
-				fd = ::open(it->second.localname.c_str(),O_WRONLY);
-				pwrite(fd,buf,s,CacheManager::blockOffset(i));
-				close(fd);
-				free(buf);*/
-				printf("blocco %d/%d disponibile,\n",i,it->second.availableChunks.size());
+				
+				printf("block %d/%d available\n",i,it->second.availableChunks.size());
 
 			}
 

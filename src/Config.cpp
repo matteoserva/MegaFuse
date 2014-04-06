@@ -86,7 +86,8 @@ char * Config::getString(std::string prompt, bool isPassword)
 
 		/*setting the new bits*/
 		tcsetattr( STDIN_FILENO, TCSANOW, &newt);
-		int i = 0,c;
+		unsigned int i = 0;
+		int c;
 		/*reading the password from the console*/
 		while ((c = getchar())!= '\n' && c != EOF && i < STRINGSIZE){
 			buffer[i++] = c;
@@ -125,12 +126,10 @@ void Config::LoadConfig()
         char linebuf[256];
         char strbuf[32];
         char valbuf[256];
-        wchar_t wstr[256];
 
         fseek(fp, 0, SEEK_END);
         size_t fsize = ftell(fp);
         fseek(fp, 0, SEEK_SET);
-        int linenum=0;
 
         #define CHECK_VARIABLE(VAR) else if(!strcmp(strbuf,#VAR)) check_variable(VAR,valbuf,#VAR)
 
@@ -146,8 +145,6 @@ void Config::LoadConfig()
             {
                 cerr<<"Could not parse line "<<linenum<<": "<<linebuf<<endl;
             }
-
-
             CHECK_VARIABLE(USERNAME);
             CHECK_VARIABLE(PASSWORD);
             CHECK_VARIABLE(APPKEY);
@@ -168,7 +165,7 @@ void Config::LoadConfig()
 		MOUNTPOINT = getString("Specify a vailid mountpoint (an empty directory): ",false);
 }
 
-Config::Config():configFile("megafuse.conf"),fuseindex(-1),APPKEY("MEGASDK")
+Config::Config():APPKEY("MEGASDK"),fuseindex(-1),configFile("megafuse.conf")
 {
 
 }

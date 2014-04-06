@@ -37,9 +37,6 @@ all: megafuse
 $(OUT): $(OBJ) 
 	$(CPP) $(CPPFLAGS) -o $(OUT) $(OBJ) $(LDFLAGS)
 
-#.c.o:
-#	$(CC) $(INCLUDES) $(CCFLAGS) -c $< -o $@ 
-
 .cpp.o:
 	$(CPP) $(INCLUDES) $(CPPFLAGS) -c $< -o $@
 

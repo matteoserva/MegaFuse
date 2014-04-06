@@ -301,7 +301,7 @@ void MegaFuseApp::transfer_update(int td, m_off_t bytes, m_off_t size, dstime st
 			if(!it->second.availableChunks[i]) {
 				it->second.availableChunks[i] = true;
 				
-				printf("block %d/%d available\n",i,it->second.availableChunks.size());
+				printf("block %d/%d available\n",i,(int)it->second.availableChunks.size());
 
 			}
 

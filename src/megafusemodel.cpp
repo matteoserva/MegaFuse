@@ -68,7 +68,7 @@ int MegaFuseModel::getAttr(const char *path, struct stat *stbuf)
 			}
 			return 0;
 		}
-	printf("not found in cache\n");
+	printf("%s not found in cache\n",path);
 	
 	return -ENOENT;
 	
@@ -347,9 +347,7 @@ int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t 
 }
 
 int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
-{
-	printf("read requested, offset %ld, size %ld\n",offset,size);
-	
+{	
 	std::unique_lock<std::mutex> engine(engine_mutex);
 	
 	printf("apro cache: %s\n",cacheManager[path].localname.c_str());
@@ -386,7 +384,7 @@ int MegaFuseModel::read(const char *path, char *buf, size_t size, off_t offset, 
 	}
 	
 	//int base = offset-(it->second.startOffset);
-	printf("-----offset richiesto: %ld, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
+	//printf("-----offset richiesto: %ld, offset della cache: %d,status %d,availablebytes %d\n",offset, it->second.startOffset,it->second.status,it->second.available_bytes);
 	int s = pread(fd,buf,size,offset);
 	close(fd);
 	//engine_mutex.unlock();

@@ -76,7 +76,6 @@ int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 		return -ENOENT;
 	switch (n->type) {
 	case FILENODE:
-		printf("filenode richiesto\n");
 		stbuf->st_mode = S_IFREG | 0666;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = n->size;
@@ -85,14 +84,13 @@ int MegaFuse::getAttr(const char* path,struct stat* stbuf)
 
 	case FOLDERNODE:
 	case ROOTNODE:
-		printf("rootnode richiesto\n");
 		stbuf->st_mode = S_IFDIR | 0777;
 		stbuf->st_nlink = 1;
 		stbuf->st_size = 4096;
 		stbuf->st_mtime = n->ctime;
 		break;
 	default:
-		printf("einval nodo\n");
+		printf("invalid node\n");
 		return -EINVAL;
 	}
 

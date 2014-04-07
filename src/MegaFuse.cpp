@@ -158,6 +158,10 @@ int MegaFuse::open(const char* path, fuse_file_info* fi)
 
 int MegaFuse::read(const char* path, char* buf, size_t size, off_t offset, fuse_file_info* fi)
 {
+	//FIXME: the engine is running between the two calls
+	int res = model->makeAvailableForRead(path,offset,size);
+	if(res < 0)
+		return res;
 	return model->read(path,buf,size,offset,fi);
 }
 

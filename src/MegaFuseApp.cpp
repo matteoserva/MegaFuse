@@ -99,7 +99,9 @@ void MegaFuseApp::putnodes_result(error e , targettype , NewNode* nn)
 void MegaFuseApp::topen_result(int td, error e)
 {
 	printf("topen fallito!\n");
-
+	for(auto it = model->cacheManager.begin(); it!=model->cacheManager.end(); ++it)
+		if(it->second.td == td)
+			it->second.td = -1;
 	model->eh.notifyEvent(EventsHandler::TOPEN_RESULT,-1);
 }
 
@@ -125,6 +127,7 @@ void MegaFuseApp::topen_result(int td, string* filename, const char* fa, int pfa
 	printf("file: %s ora in stato DOWNLOADING\n",remotename.c_str());
 	model->cacheManager[remotename].status = file_cache_row::DOWNLOADING;
 	model->cacheManager[remotename].available_bytes = 0;
+	model->cacheManager[remotename].td = td;
 	model->eh.notifyEvent(EventsHandler::TOPEN_RESULT,+1);
 }
 

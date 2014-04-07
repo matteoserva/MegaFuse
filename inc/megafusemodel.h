@@ -54,7 +54,6 @@ private:
 
     Node* childNodeByName(Node *p,std::string name);
     public:
-	int enqueueDownload(std::string filename,int startOffset);
     int unlink(std::string);
     std::unordered_map <std::string,file_cache_row>::iterator findCacheByTransfer(int, file_cache_row::CacheStatus);
     ~MegaFuseModel();

@@ -37,6 +37,8 @@ bool file_cache_row::canRead(size_t offset,size_t size)
 
 int file_cache_row::firstUnavailableOffset()
 {
+	if(status != DOWNLOADING && status != DOWNLOAD_PAUSED)
+		return 0;
 	for(unsigned int i = 0; i < availableChunks.size(); i++)
 		if(!availableChunks[i])
 			return CacheManager::blockOffset(i);

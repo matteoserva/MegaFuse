@@ -37,7 +37,7 @@ public:
 	void users_updated(User** u, int count);
 };
 
-class MegaFuseModel 
+class MegaFuseModel
 {
 	friend class MegaFuseApp;
 	CacheManager cacheManager;
@@ -46,6 +46,8 @@ public:
 	std::mutex &engine_mutex;
 	Node* nodeByPath(std::string path);
 	std::pair<std::string,std::string> splitPath(std::string);
+    int makeAvailableForRead(const char *path, off_t offset,size_t size);
+
 
 private:
 	EventsHandler &eh;

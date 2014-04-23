@@ -7,7 +7,7 @@ Once mounted, all linux program will see the cloud drive as a normal folder.
 
 This software is based on FUSE.
 
-The file are downloaded on the fly when requested and then cached to speedup processing.
+The files are downloaded on the fly when requested and then cached to speedup processing.
 The downloader will assign a higher priority to the requested chunk, and prefetch the remaining data.
 This allows also fast streaming of video files without prior encoding.
 
@@ -34,7 +34,7 @@ you can specify the location of the conf file with the command line option -c, b
 
 	./MegaFuse -c /home/user/megafuse.conf
 	
-for the full list of options, launch the program with the option -f
+for the full list of options, launch the program with the option -h
 
 after an abnormal termination you might need to clear the mountpoint:
 	

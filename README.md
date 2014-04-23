@@ -26,6 +26,10 @@ to compile on debian 7 you need these additional packages:
 	
 	apt-get install libcrypto++ libcurl4-openssl-dev libdb5.1++-dev libfreeimage-dev 
 
+you might also need these libraries
+	
+	apt-get install libreadline-dev libfuse-dev
+
 you can pass additional options to the fuse module via the command line option -f. example:
 	
 	./MegaFuse -f -o allow_other -o uid=1000

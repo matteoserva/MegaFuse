@@ -29,6 +29,10 @@ to compile on debian 7 you need these additional packages:
 you can pass additional options to the fuse module via the command line option -f. example:
 	
 	./MegaFuse -f -o allow_other -o uid=1000
+	
+specify the location of the conf file this way
+
+	./MegaFuse -c /home/user/megafuse.conf -f -o allow_other -o uid=1000 -o gid=1000
 
 after an abnormal termination you might need to clear the mountpoint:
 	

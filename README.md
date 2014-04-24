@@ -7,7 +7,7 @@ Once mounted, all linux program will see the cloud drive as a normal folder.
 
 This software is based on FUSE.
 
-The file are downloaded on the fly when requested and then cached to speedup processing.
+The files are downloaded on the fly when requested and then cached to speedup processing.
 The downloader will assign a higher priority to the requested chunk, and prefetch the remaining data.
 This allows also fast streaming of video files without prior encoding.
 
@@ -22,21 +22,19 @@ to run,just
 	make
 	./MegaFuse
 
-to compile on debian 7 you need these additional packages:
+to compile on debian or ubuntu you need these additional packages:
 	
-	apt-get install libcrypto++ libcurl4-openssl-dev libdb5.1++-dev libfreeimage-dev 
-
-you might also need these libraries
-	
-	apt-get install libreadline-dev libfuse-dev
+	apt-get install libcrypto++ libcurl4-openssl-dev libdb5.1++-dev libfreeimage-dev libreadline-dev libfuse-dev
 
 you can pass additional options to the fuse module via the command line option -f. example:
 	
 	./MegaFuse -f -o allow_other -o uid=1000
 	
-specify the location of the conf file this way
+you can specify the location of the conf file with the command line option -c, by default the program will search the file "megafuse.conf" in the current path
 
-	./MegaFuse -c /home/user/megafuse.conf -f -o allow_other -o uid=1000 -o gid=1000
+	./MegaFuse -c /home/user/megafuse.conf
+	
+for the full list of options, launch the program with the option -h
 
 after an abnormal termination you might need to clear the mountpoint:
 	

@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 #include "EventsHandler.h"
-
+const char* errorstring(error e);
 class MegaFuseModel;
 
 class MegaFuseApp : public DemoApp

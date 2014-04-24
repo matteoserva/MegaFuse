@@ -357,14 +357,22 @@ int MegaFuseModel::makeAvailableForRead(const char *path, off_t offset,size_t si
 		
 		int td = client->topen(n->nodehandle, NULL, startOffset,-1, 1);
 		if( td < 0)
+			{
+			printf("error while opening the file: %s\n",errorstring(error(td)))	;
 			return -EIO;
+		}	
+		
+			
 		it->second.td = td;
 		it->second.size = n->size;
 		EventsListener el(eh,EventsHandler::TOPEN_RESULT);
 		engine.unlock();
 		auto open_result = el.waitEvent();
 		if(open_result.result < 0)
+		{
+			printf("error while waiting for topen_result the file: %s\n",error(open_result.result))	;
 			return -EIO;
+		}	
 		
 		engine.lock();
 		it->second.last_modified = n->mtime;

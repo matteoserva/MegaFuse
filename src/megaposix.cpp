@@ -410,7 +410,7 @@ int megafuse_mainpp(int argc,char **argv,MegaFuse* mf);
 
 
 #include "Config.h"
-
+#include "Logger.h"
 int main(int argc, char **argv)
 {
 
@@ -431,6 +431,7 @@ int main(int argc, char **argv)
         exit(1);
     }
    
+	Logger::getInstance().log(Logger::NOTIFY,"MegaFuse is ready");
 	std::vector<std::string> fuseArguments;
 	fuseArguments.push_back("megafuse");
 	fuseArguments.push_back("-f");

@@ -15,7 +15,7 @@
 #include <db_cxx.h>
 #include "megabdb.h"
 #include "MegaFuse.h"
-MegaFuse::MegaFuse()
+MegaFuse::MegaFuse():running(true)
 {
 
 	model = new MegaFuseModel(eh,engine_mutex);
@@ -29,13 +29,23 @@ void MegaFuse::event_loop(MegaFuse* that)
 {
 
 
-	for (;;) {
+	for (;that->running;) {
 		that->engine_mutex.lock();
 		client->exec();
 		that->engine_mutex.unlock();
 		client->wait();
 	}
 }
+
+MegaFuse::~MegaFuse()
+{
+	running=false;
+	event_loop_thread.join();
+	
+	
+	
+}
+
 bool MegaFuse::login()
 {
 	std::string username = Config::getInstance()->USERNAME.c_str();

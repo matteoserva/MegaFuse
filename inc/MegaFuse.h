@@ -9,11 +9,12 @@ private:
 	EventsHandler eh;
 	byte pwkey[SymmCipher::KEYLENGTH];
 	std::mutex engine_mutex;
+	bool running;
 	static void event_loop(MegaFuse* megaFuse);
     std::thread event_loop_thread;
 	public:
 	MegaFuse();
-	
+	~MegaFuse();
 	bool login();
 	
 	int open(const char *path, struct fuse_file_info *fi);

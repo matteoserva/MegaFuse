@@ -228,7 +228,8 @@ void CurlHttpIO::waitio(dstime maxds)
 	curl_multi_fdset(curlm,&rfds,&wfds,&efds,&maxfd);
 
 	// unblock upon user input
-	FD_SET(fileno(stdin),&rfds);
+	//ROBA MIA: IGNORE USER INPUT
+	//FD_SET(fileno(stdin),&rfds);
 
 	if (maxfd < fileno(stdin)) maxfd = fileno(stdin);
 
@@ -449,6 +450,6 @@ int main(int argc, char **argv)
 	
 	
 	megafuse_mainpp(fuseArguments.size(),fuseArgv,&mf);
-
+	return 0;
 
 }

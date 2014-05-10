@@ -372,7 +372,9 @@ int MegaFuseModel::makeAvailableForRead(const char *path, off_t offset,size_t si
 		auto open_result = el.waitEvent();
 		if(open_result.result < 0)
 		{
-			printf("error while waiting for topen_result the file: %s\n",error(open_result.result))	;
+			printf("error while waiting for topen_result the file: %s\n",errorstring(error(open_result.result)))	;
+			if(open_result.result == API_ETEMPUNAVAIL)
+				return -EAGAIN;
 			return -EIO;
 		}	
 		

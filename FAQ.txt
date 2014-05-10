@@ -16,3 +16,5 @@ A: The downloader is smart enough to assign a higher priority to the requested p
    Just open the audio/video file with your favourite player. I suggest VLC.
    You can do all the operations supported by your player as if the file was saved on your hard drive.
 
+Q: How do I access a shared file from another account?
+A: Import the file into your account, then it will be available from MegaFuse

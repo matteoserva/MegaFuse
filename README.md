@@ -44,3 +44,29 @@ after an abnormal termination you might need to clear the mountpoint:
 I'm currently accepting donations via paypal at the address of my main project
 
 	http://ygopro.it/web/modules.php?name=Donations&op=make
+
+FAQ
+========
+	Q: Is this a sync application?
+	A: No.
+	Traditionally on linux the filesystem and the sync tool are separate programs.
+	MegaFuse allows you to access the remote filesystem,
+	then you can use most of the sync apps that are already available on your linux distribution to sync any folder you want.
+-
+	Q: Why there is no GUI?
+	A: Operations performed through mega are done synchronously.
+	It's the operating system itself that alerts you about the result of an operation.
+	For example, if you copy a file to the MEGA folder, the copy operation completes when the file has been successfully uploaded.
+   	Of course a GUI can be added but it would be an additional application written on top of MegaFuse.
+-
+	Q: Why it is so fast?
+	A: A cache is kept to speed up operations.
+	Files are split in chunks during the download, reads can be completed as soon as enough data is available.
+-
+	Q: How do I open a media file for streaming? Can I jump to a specific point of the file?
+	A: The downloader is smart enough to assign a higher priority to the requested portion of the file.
+   	Just open the audio/video file with your favourite player. I suggest VLC.
+   	You can do all the operations supported by your player as if the file was saved on your hard drive.
+-
+	Q: How do I access a shared file from another account?
+	A: Import the file into your account, then it will be available from MegaFuse

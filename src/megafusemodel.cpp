@@ -192,7 +192,9 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 			EventsListener el2(eh,EventsHandler::NODE_UPDATED);
 			lock.unlock();
 			auto l_ress = el.waitEvent();
-			
+			if(l_ress.result < 0)
+				return -EIO;
+				
 			auto l_res = el2.waitEvent();
 			if(oldNode) {
 				lock.lock();

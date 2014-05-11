@@ -99,6 +99,7 @@ void MegaFuseApp::putnodes_result(error e , targettype , NewNode* nn)
 void MegaFuseApp::topen_result(int td, error e)
 {
 	printf("topen fallito!\n");
+	client->tclose(td);
 	for(auto it = model->cacheManager.begin(); it!=model->cacheManager.end(); ++it)
 		if(it->second.td == td)
 			it->second.td = -1;

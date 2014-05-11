@@ -257,7 +257,7 @@ void MegaFuseApp::transfer_failed(int td, error e)
 		it->second.status = file_cache_row::AVAILABLE;
 		it->second.td = -1;
 	}
-	model->eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,-1);
+	model->eh.notifyEvent(EventsHandler::UPLOAD_COMPLETE,e);
 }
 
 void MegaFuseApp::transfer_failed(int td, string& filename, error e)

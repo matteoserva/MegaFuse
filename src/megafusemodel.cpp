@@ -193,7 +193,11 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 			lock.unlock();
 			auto l_ress = el.waitEvent();
 			if(l_ress.result < 0)
+			{
+				printf("error while uploading the file: %s\n",errorstring(error(l_ress.result)))	;
 				return -EIO;
+			}
+				
 				
 			auto l_res = el2.waitEvent();
 			if(oldNode) {

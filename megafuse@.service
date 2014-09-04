@@ -1,0 +1,11 @@
+[Unit]
+Description=Mount your MEGA cloud storage with fuse
+After=network.target
+
+[Service]
+User=%i
+ExecStart=/usr/bin/MegaFuse -c /home/%i/.config/MegaFuse/megafuse.conf
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

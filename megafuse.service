@@ -1,0 +1,10 @@
+[Unit]
+Description=Mount your MEGA cloud storage with fuse
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/MegaFuse -c %h/.config/MegaFuse/megafuse.conf
+Restart=always
+
+[Install]
+WantedBy=default.target

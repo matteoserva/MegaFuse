@@ -41,9 +41,7 @@ MegaFuse::~MegaFuse()
 {
 	running=false;
 	event_loop_thread.join();
-	
-	
-	
+	delete model;
 }
 
 bool MegaFuse::login()

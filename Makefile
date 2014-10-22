@@ -17,7 +17,8 @@ OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
 INCLUDES = -I inc -I /usr/include/cryptopp -I sdk
 
 # C compiler flags (-g -O2 -Wall)
-CCFLAGS =   -O0 -g -fstack-protector-all -Wall -D_FILE_OFFSET_BITS=64 #-non-call-exceptions
+CCFLAGS =   -O0 -g -fstack-protector-all -Wall #-non-call-exceptions
+CCFLAGS += $(shell pkg-config --cflags libcurl fuse)
 CPPFLAGS =  -std=c++0x $(CCFLAGS) -D_GLIBCXX_DEBUG 
 
 # compiler
@@ -28,7 +29,8 @@ CXX= g++
 LIBS = 
 
 # compile flags
-LDFLAGS = -lcryptopp -lfreeimage -lcurl -ldb_cxx -lfuse
+LDFLAGS = -lcryptopp -lfreeimage -ldb_cxx
+LDFLAGS += $(shell pkg-config --libs libcurl fuse)
 
 megafuse: $(OUT)
 

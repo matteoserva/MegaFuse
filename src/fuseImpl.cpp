@@ -9,7 +9,6 @@
 #include "megaclient.h"
 #include "MegaFuse.h"
 
-
 static MegaFuse* megaFuse;
 #include <mutex>
 
@@ -20,19 +19,16 @@ int hello_write(const char * path, const char *buf, size_t size, off_t offset, s
 	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->write(path,buf,size,offset,fi);
 }
-
 int hello_getattr(const char *path, struct stat *stbuf)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->getAttr(path,stbuf);
 }
-
 int hello_open(const char *path, struct fuse_file_info *fi)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->open(path,fi);
 }
-
 int hello_read(const char *path, char *buf, size_t size, off_t offset,
                struct fuse_file_info *fi)
 {
@@ -41,7 +37,6 @@ int hello_read(const char *path, char *buf, size_t size, off_t offset,
 
 	return megaFuse->read(path,buf,size,offset,fi);
 }
-
 int hello_rename(const char * src, const char *dst)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
@@ -57,8 +52,6 @@ int hello_release(const char *path, struct fuse_file_info *fi)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->release(path,fi);
 }
-
-
 int hello_mkdir(const char * path, mode_t mode)
 {
 	std::lock_guard<std::mutex>lock(api_mutex);
@@ -70,9 +63,6 @@ int hello_create(const char *path, mode_t mode, struct fuse_file_info * fi)
 	std::lock_guard<std::mutex>lock(api_mutex);
 	return megaFuse->create(path,mode,fi);
 }
-
-
-
 int hello_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info *fi)
 {
@@ -102,18 +92,13 @@ int hello_link(const char *a, const char *b)
 	//printf("link %s %s\n",a,b);
 	return -EMLINK;
 }
-
 int hello_statvfs(const char * a, struct statvfs * stat)
 {
-	stat->f_bfree=1000;
-	stat->f_bavail=500;
-	stat->f_bsize=4096;
-	stat->f_favail = 100;
-	stat->f_namemax = 256;
-
+	stat->f_blocks  = 50*1024*1024;
+	stat->f_bavail  = 49*1024*1024;
+	stat->f_bsize   = 1024;
 
 	return 0;
-
 } 
 
 int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
@@ -138,5 +123,4 @@ int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 	hello_oper.link		= hello_link;
 	hello_oper.statfs    = hello_statvfs;
 	return fuse_main(argc, argv, &hello_oper, NULL);
-
 }

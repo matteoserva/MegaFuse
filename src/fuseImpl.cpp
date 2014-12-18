@@ -97,6 +97,7 @@ int hello_statvfs(const char * a, struct statvfs * stat)
 	stat->f_blocks  = 50*1024*1024;
 	stat->f_bavail  = 49*1024*1024;
 	stat->f_bsize   = 1024;
+	stat->f_namemax = 256;
 
 	return 0;
 } 

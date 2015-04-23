@@ -101,7 +101,27 @@ int hello_statvfs(const char * a, struct statvfs * stat)
 
 	return 0;
 } 
-
+int hello_setxattr(const char *path, const char *name,
+			const char *value, size_t size, int flags)
+{
+	std::lock_guard<std::mutex>lock(api_mutex);
+	return megaFuse->setxattr(path, name, value, size, flags);
+}
+int hello_getxattr(const char *path, const char *name,
+                       char *value, size_t size)
+{
+	return megaFuse->getxattr(path, name, value, size);
+}
+int hello_symlink(const char *path1, const char *path2)
+{
+	std::lock_guard<std::mutex>lock(api_mutex);
+	return megaFuse->symlink(path1, path2);
+}
+int hello_readlink(const char *path, char *buf, size_t bufsiz)
+{
+	std::lock_guard<std::mutex>lock(api_mutex);
+	return megaFuse->readlink(path,buf,bufsiz);
+}
 int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 {
 	megaFuse = mf;
@@ -118,10 +138,19 @@ int megafuse_mainpp(int argc,char**argv,MegaFuse* mf)
 	hello_oper.chmod      = hello_chmod;
 	hello_oper.chown      = hello_chown;
 	hello_oper.truncate   = hello_truncate;
+	hello_oper.symlink    = hello_symlink;
 	hello_oper.write      = hello_write;
 	hello_oper.mkdir      = hello_mkdir;
 	hello_oper.rename     =hello_rename;
-	hello_oper.link		= hello_link;
+	hello_oper.link	      = hello_link;
 	hello_oper.statfs    = hello_statvfs;
+	hello_oper.readlink	= hello_readlink;
+//#ifdef HAVE_SETXATTR
+	hello_oper.setxattr	= hello_setxattr;
+	hello_oper.getxattr	= hello_getxattr;
+//	hello_oper.listxattr	= hello_listxattr;
+//	hello_operremovexattr	= hello_removexattr;
+//#endif
+
 	return fuse_main(argc, argv, &hello_oper, NULL);
 }

@@ -230,9 +230,6 @@ void MegaFuseApp::transfer_complete(int td, handle ulhandle, const byte* ultoken
 	client->makeattr(key,&newnode->attrstring,localname.c_str());
 
 
-
-
-
 	/*if (putf->targetuser.size()) {
 		cout << "Attempting to drop file into user " << putf->targetuser << "'s inbox..." << endl;
 		client->putnodes(putf->targetuser.c_str(),newnode,1);

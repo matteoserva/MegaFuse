@@ -83,7 +83,6 @@ std::pair<std::string,std::string> MegaFuseModel::splitPath(std::string path)
 		basename = "/";
 	return std::pair<std::string,std::string> (basename,filename);
 }
-
 //warning, no mutex
 Node* MegaFuseModel::nodeByPath(std::string path)
 {
@@ -157,8 +156,12 @@ MegaApp* MegaFuseModel::getCallbacksHandler()
 {
 	return &callbacksHandler;
 }
+int MegaFuseModel::releaseNoThumb(const char *path, struct fuse_file_info *fi)
+{
+	return release(path, fi, false);
+}
 
-int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
+int MegaFuseModel::release(const char *path, struct fuse_file_info *fi, bool makethumb)
 {
 	int ret = 0;
 	auto it = cacheManager.begin();
@@ -177,15 +180,18 @@ int MegaFuseModel::release(const char *path, struct fuse_file_info *fi)
 			return -EAGAIN;
 		it->second.td = td;
 		it->second.status = file_cache_row::UPLOADING;
+
+		if(makethumb){		
+			std::string thumbnail("");
+			createthumbnail(it->second.localname.c_str(),120,&thumbnail);
 		
-		std::string thumbnail;
-		createthumbnail(it->second.localname.c_str(),120,&thumbnail);
-		
-		if (thumbnail.size()) {
-			cout << "Image detected and thumbnail extracted, size " << thumbnail.size() << " bytes" << endl;
-			handle uh = client->uploadhandle(td);
-			client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
+			if (thumbnail.size()) {
+				cout << "Image detected and thumbnail extracted, size " << thumbnail.size() << " bytes" << endl;
+				handle uh = client->uploadhandle(td);
+				client->putfa(&client->ft[td].key,uh,THUMBNAIL120X120,(const byte*)thumbnail.data(),thumbnail.size());
+			}
 		}
+		handle uh = client->uploadhandle(td);
 		
 		if(it->second.status ==file_cache_row::UPLOADING) {
 			EventsListener el(eh,EventsHandler::UPLOAD_COMPLETE);
@@ -282,28 +288,30 @@ int MegaFuseModel::open(const char *p, struct fuse_file_info *fi)
 	it->second.handle = n->nodehandle;
 	return 0;
 }
-
 int MegaFuseModel::write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi)
 {
-
 	auto it = cacheManager.find(path);
 	
 	chmod(it->second.localname.c_str(),S_IWUSR|S_IRUSR);
 	printf("write, file %s, apro cache: %s\n",it->first.c_str(),it->second.localname.c_str());
-	int fd = ::open(it->second.localname.c_str(),O_WRONLY);
+	int fd = ::open(it->second.localname.c_str(),O_WRONLY|fi->flags);
 	if (fd < 0 )
 		return fd;
 	int s = pwrite(fd,buf,size,offset);
 	close(fd);
 	it->second.modified=true;
-	int newsize = offset + size;
+
+	//right calculation of new size when O_APPEND is used
+	if (fi->flags & O_APPEND)
+		offset=it->second.size;
+	int newsize = offset + size;	
+
 	if(it->second.size < newsize) {
 		it->second.size = newsize;
 		it->second.availableChunks.resize(CacheManager::numChunks(it->second.size),false);
 	}
 	return s;
 }
-
 //0 is success
 int MegaFuseModel::makeAvailableForRead(const char *path, off_t offset,size_t size)
 {

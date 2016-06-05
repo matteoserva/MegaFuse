@@ -46,7 +46,8 @@ public:
 	std::mutex &engine_mutex;
 	Node* nodeByPath(std::string path);
 	std::pair<std::string,std::string> splitPath(std::string);
-    int makeAvailableForRead(const char *path, off_t offset,size_t size);
+	int makeAvailableForRead(const char *path, off_t offset,size_t size);
+
 
 
 private:
@@ -66,7 +67,8 @@ private:
     int open(const char *path, struct fuse_file_info *fi);
     std::set<std::string> readdir(const char *path);
     int getAttr(const char *path, struct stat *stbuf);
-    int release(const char *path, struct fuse_file_info *fi);
+    int release(const char *path, struct fuse_file_info *fi, bool makethumb = true);
+    int releaseNoThumb(const char *path, struct fuse_file_info *fi);
     int read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
     int write(const char * path, const char *buf, size_t size, off_t offset, struct fuse_file_info * fi);
     int rename(const char * src, const char *dst);

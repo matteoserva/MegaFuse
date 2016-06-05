@@ -3,6 +3,7 @@
  */
 
 #include "file_cache_row.h"
+#include "Config.h"
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,8 +13,8 @@
 
 file_cache_row::file_cache_row(): td(-1),status(INVALID),size(0),available_bytes(0),n_clients(0),startOffset(0),modified(false),handle(0)
 {
-	char filename[] = "/tmp/mega.XXXXXX";
-	close (mkstemp(filename));
+	std::string filename = Config::getInstance()->CACHEPATH + "/mega.XXXXXX";
+	close (mkstemp(&filename[0]));
 	localname = filename;
 	printf("creato il file %s\n",localname.c_str());
 }

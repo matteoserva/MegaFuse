@@ -10,7 +10,7 @@ SRC += sdk/megabdb.cpp sdk/megaclient.cpp sdk/megacrypto.cpp
 OUT = $(TARGET)
 OBJ = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRC)))
 
-.PHONY:	
+.PHONY:	clean install
 
 
 # include directories
@@ -45,3 +45,9 @@ $(OUT): $(OBJ)
 
 clean:	
 	rm -f $(OBJ) $(OUT)
+
+install: $(OUT)
+	mkdir -p /usr/share/doc/MegaFuse
+	cp FAQ.txt LICENSE.txt README.md megafuse.conf /usr/share/doc/MegaFuse/
+	cp megafuse.service megafuse@.service /lib/systemd/system/
+	cp $(OUT) /usr/bin/

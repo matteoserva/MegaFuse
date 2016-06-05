@@ -40,7 +40,7 @@ bool Config::parseCommandLine(int argc, char**argv)
             configFile=optarg;
             cout <<"ss "<<configFile<<endl;
             break;
-		case 'f':
+        case 'f':
             fuseindex = optind;
             return false;
             break;
@@ -149,6 +149,7 @@ void Config::LoadConfig()
             CHECK_VARIABLE(PASSWORD);
             CHECK_VARIABLE(APPKEY);
             CHECK_VARIABLE(MOUNTPOINT);
+            CHECK_VARIABLE(CACHEPATH);
             else
                 cerr<<"Could not understand the keyword at line"<<linenum<<": "<<strbuf<<endl;
         }
@@ -162,7 +163,9 @@ void Config::LoadConfig()
 	if(PASSWORD == "")
 	    PASSWORD = getString("Enter your password: ",true);
 	while(2 != countEntriesInDir(MOUNTPOINT))
-		MOUNTPOINT = getString("Specify a vailid mountpoint (an empty directory): ",false);
+		MOUNTPOINT = getString("Specify a valid mountpoint (an empty directory): ",false);
+	while(0 > countEntriesInDir(CACHEPATH))
+		CACHEPATH = getString("Specify a valid cache path (eg: /tmp): ",false);
 }
 
 Config::Config():APPKEY("MEGASDK"),fuseindex(-1),configFile("megafuse.conf")

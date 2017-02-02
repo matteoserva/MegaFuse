@@ -24,7 +24,7 @@ to run,just
 
 to compile on debian or ubuntu you need these additional packages:
 	
-	apt-get install libcrypto++-dev libcurl4-openssl-dev libdb5.1++-dev libfreeimage-dev libreadline-dev libfuse-dev
+	apt-get install libcrypto++-dev libcurl4-openssl-dev libdb5.3++-dev libfreeimage-dev libreadline-dev libfuse-dev
 
 you can pass additional options to the fuse module via the command line option -f. example:
 	
